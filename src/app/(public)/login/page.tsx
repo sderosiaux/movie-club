@@ -18,10 +18,13 @@ export default function LoginPage() {
         />
         <div
           className="absolute inset-0"
-          style={{ background: "linear-gradient(to right, transparent 50%, var(--background) 100%)" }}
+          style={{ background: "linear-gradient(to right, transparent 50%, #fefaf0 100%)" }}
         />
         <div className="absolute bottom-12 left-12 right-24">
-          <blockquote className="text-xl font-medium italic leading-relaxed text-white drop-shadow-lg">
+          <blockquote
+            className="text-xl font-medium italic"
+            style={{ lineHeight: 1.6, color: "#ffffff", textShadow: "0 2px 10px rgba(0,0,0,0.5)" }}
+          >
             &ldquo;The best movie conversations happen right after you walk
             out.&rdquo;
           </blockquote>
@@ -29,7 +32,10 @@ export default function LoginPage() {
       </div>
 
       {/* Right: form */}
-      <main className="flex w-full flex-col items-center justify-center px-8 py-12 lg:w-1/2">
+      <main
+        className="flex w-full flex-col items-center justify-center px-8 py-12 lg:w-1/2"
+        style={{ backgroundColor: "#fefaf0" }}
+      >
         <LoginForm />
       </main>
     </div>
