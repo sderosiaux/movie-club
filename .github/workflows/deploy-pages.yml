@@ -1,0 +1,194 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - run: npm ci
+
+      - name: Build static landing page
+        run: |
+          # Build only the public-facing landing page as a simple static HTML
+          mkdir -p out
+          cp -r public/* out/
+          # Generate a static HTML version of the landing page
+          node -e "
+          const fs = require('fs');
+          const html = \`<!DOCTYPE html>
+          <html lang='en'>
+          <head>
+            <meta charset='utf-8' />
+            <meta name='viewport' content='width=device-width, initial-scale=1' />
+            <title>Movie Club — Find your movie crew in NYC</title>
+            <meta name='description' content='Small groups. Real conversations. After the credits.' />
+            <meta property='og:title' content='Movie Club — Find your movie crew in NYC' />
+            <meta property='og:description' content='Find 3-5 people who love the same films you do. Watch together. Talk after.' />
+            <meta property='og:image' content='/movie-club/images/hero-friends.png' />
+            <style>
+              @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+              * { margin:0; padding:0; box-sizing:border-box; }
+              body { font-family: 'Inter', -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
+              a { text-decoration: none; }
+
+              .hero {
+                position: relative; min-height: 100vh; display: flex; align-items: flex-end;
+                background: #1a1510; overflow: hidden;
+              }
+              .hero-img {
+                position: absolute; inset: 0; width: 100%; height: 100%;
+                object-fit: cover; opacity: 0.4;
+              }
+              .hero-overlay {
+                position: absolute; inset: 0;
+                background: linear-gradient(to bottom, #1a1510cc 0%, transparent 40%, #1a1510f2 100%);
+              }
+              .hero-content {
+                position: relative; max-width: 1100px; margin: 0 auto; width: 100%;
+                padding: 128px 24px 96px;
+              }
+              .hero-tag { font-size: 13px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.25em; color: rgba(251,191,36,0.8); }
+              .hero-h1 {
+                margin-top: 24px; max-width: 800px;
+                font-size: clamp(2.5rem, 6vw, 4.5rem); font-weight: 700;
+                line-height: 1.08; letter-spacing: -0.02em; color: #fff;
+              }
+              .hero-p { margin-top: 32px; max-width: 540px; font-size: 18px; line-height: 1.7; color: rgba(255,255,255,0.6); }
+              .hero-actions { margin-top: 40px; display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
+              .cta {
+                display: inline-flex; align-items: center; justify-content: center;
+                height: 56px; padding: 0 40px; border-radius: 12px;
+                background: #f59e0b; color: #451a03; font-weight: 600; font-size: 16px;
+                box-shadow: 0 10px 25px -5px rgba(245,158,11,0.3);
+                transition: all 0.2s;
+              }
+              .cta:hover { background: #fbbf24; transform: translateY(-2px); box-shadow: 0 15px 30px -5px rgba(245,158,11,0.35); }
+              .hero-free { font-size: 14px; color: rgba(255,255,255,0.4); }
+
+              .quote { padding: 96px 24px; background: #fefaf0; text-align: center; }
+              .quote blockquote {
+                max-width: 700px; margin: 0 auto;
+                font-size: clamp(1.125rem, 2.5vw, 1.5rem); font-weight: 500;
+                font-style: italic; line-height: 1.7; color: #1c1917;
+              }
+              .quote-attr { margin-top: 24px; font-size: 14px; color: #a8a29e; }
+
+              .steps { padding: 96px 24px; background: #fff; }
+              .steps-inner { max-width: 1100px; margin: 0 auto; }
+              .steps-title { text-align: center; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.25em; color: #a8a29e; }
+              .step { margin-top: 80px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; }
+              .step-img { position: relative; width: 100%; aspect-ratio: 4/3; border-radius: 16px; overflow: hidden; box-shadow: 0 20px 60px -15px rgba(0,0,0,0.2); }
+              .step-img img { width: 100%; height: 100%; object-fit: cover; }
+              .step-num {
+                display: inline-flex; align-items: center; justify-content: center;
+                height: 36px; width: 36px; border-radius: 50%;
+                background: #fef3c7; color: #b45309; font-size: 14px; font-weight: 700;
+              }
+              .step h3 { margin-top: 16px; font-size: 24px; font-weight: 700; color: #1c1917; }
+              .step p { margin-top: 12px; font-size: 16px; line-height: 1.7; color: #78716c; }
+
+              .bottom-cta { position: relative; overflow: hidden; background: #1a1510; padding: 128px 24px; text-align: center; }
+              .bottom-cta-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.15; }
+              .bottom-cta-content { position: relative; max-width: 640px; margin: 0 auto; }
+              .bottom-cta h2 { font-size: clamp(1.75rem, 4vw, 3rem); font-weight: 700; line-height: 1.15; color: #fff; }
+              .bottom-cta p { margin-top: 32px; font-size: 18px; line-height: 1.7; color: rgba(255,255,255,0.6); }
+              .bottom-cta .cta { margin-top: 40px; }
+              .bottom-cta .sub { margin-top: 20px; font-size: 14px; color: rgba(255,255,255,0.3); }
+
+              footer { padding: 40px 24px; background: #12100c; text-align: center; font-size: 14px; color: rgba(255,255,255,0.25); }
+
+              @media (max-width: 768px) {
+                .step { grid-template-columns: 1fr; }
+                .step.reverse .step-img { order: -1; }
+              }
+            </style>
+          </head>
+          <body>
+            <section class='hero'>
+              <img src='/movie-club/images/hero-friends.png' alt='' class='hero-img' />
+              <div class='hero-overlay'></div>
+              <div class='hero-content'>
+                <p class='hero-tag'>For NYC cinephiles</p>
+                <h1 class='hero-h1'>Movies are better when you have someone to talk about them with</h1>
+                <p class='hero-p'>Find 3-5 people who love the same films you do. Watch together at your favorite NYC cinemas. Grab a beer after and talk about what you just saw. That's it.</p>
+                <div class='hero-actions'>
+                  <a href='#' class='cta'>Find your crew</a>
+                  <span class='hero-free'>Free. No app to download.</span>
+                </div>
+              </div>
+            </section>
+
+            <section class='quote'>
+              <blockquote>&ldquo;I don't need a huge friend group. I just want a few people who want to grab a beer after a screening and talk about what we just watched.&rdquo;</blockquote>
+              <p class='quote-attr'>&mdash; A real post. 194 upvotes. 100+ people who felt the same.</p>
+            </section>
+
+            <section class='steps'>
+              <div class='steps-inner'>
+                <h2 class='steps-title'>How it works</h2>
+                <div class='step'>
+                  <div class='step-img'><img src='/movie-club/images/step-browse.png' alt='Browsing screenings' /></div>
+                  <div><span class='step-num'>1</span><h3>Browse what's showing</h3><p>See real screenings at Nitehawk, BAM, Alamo Drafthouse, and every indie cinema in NYC. Someone already picked the film and the showtime. You just show up.</p></div>
+                </div>
+                <div class='step reverse'>
+                  <div><span class='step-num'>2</span><h3>Join a small group</h3><p>Groups are capped at 6 people by design. No awkward Meetup crowds of 25 people standing outside a theater. Just a few people who actually want to be there.</p></div>
+                  <div class='step-img'><img src='/movie-club/images/step-join.png' alt='Small group at movies' /></div>
+                </div>
+                <div class='step'>
+                  <div class='step-img'><img src='/movie-club/images/step-crew.png' alt='Friends at bar' /></div>
+                  <div><span class='step-num'>3</span><h3>Find your people</h3><p>After 2-3 screenings, you'll notice the same faces. The ones who get your taste. The ones who stay for the conversation. That's your crew. It happens naturally.</p></div>
+                </div>
+              </div>
+            </section>
+
+            <section class='bottom-cta'>
+              <img src='/movie-club/images/hero-friends.png' alt='' class='bottom-cta-img' />
+              <div class='bottom-cta-content'>
+                <h2>The movie is almost secondary sometimes</h2>
+                <p>It's the conversation after that matters. The debate over whether the ending worked. The recommendation you never would have found on your own. The regulars who become friends.</p>
+                <a href='#' class='cta'>Join Movie Club</a>
+                <p class='sub'>Brooklyn, Manhattan, Queens. More neighborhoods coming.</p>
+              </div>
+            </section>
+
+            <footer>Movie Club &mdash; NYC</footer>
+          </body>
+          </html>\`;
+          fs.writeFileSync('out/index.html', html);
+          console.log('Static landing page generated');
+          "
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./out
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
