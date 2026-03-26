@@ -176,24 +176,24 @@ export default async function ScreeningsPage({
           ))}
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-16 text-center">
-          <div className="flex size-12 items-center justify-center rounded-full bg-muted">
-            <FilmIcon className="size-6 text-muted-foreground" />
+        <div className="flex flex-col items-center justify-center rounded-2xl bg-gradient-to-b from-amber-50/50 to-transparent border border-amber-200/30 py-20 px-8 text-center">
+          <div className="flex size-14 items-center justify-center rounded-full bg-amber-100">
+            <FilmIcon className="size-7 text-amber-600" />
           </div>
-          <h2 className="mt-4 text-base font-semibold text-foreground">
-            No screenings yet
+          <h2 className="mt-6 text-xl font-bold text-foreground">
+            No one&apos;s proposed a screening yet
           </h2>
-          <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-            Be the first to propose one. Pick a film, choose a cinema, and
-            invite others.
+          <p className="mt-3 max-w-md text-base leading-relaxed text-muted-foreground">
+            Every crew starts with someone picking a film. That someone could
+            be you. Pick a movie, choose a cinema, set a time &mdash; others
+            will find you.
           </p>
           <Button
             render={<Link href="/screenings/new" />}
-            className="mt-4"
-            size="sm"
+            className="mt-6 h-11 px-6 bg-amber-500 text-[oklch(0.15_0.02_60)] hover:bg-amber-400 font-semibold shadow-md shadow-amber-500/20"
           >
             <PlusIcon className="size-4" />
-            Create a screening
+            Propose a screening
           </Button>
         </div>
       )}

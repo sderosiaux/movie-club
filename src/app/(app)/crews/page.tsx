@@ -175,15 +175,19 @@ export default async function CrewsPage() {
           })}
         </div>
       ) : !showPrompt ? (
-        <div className="py-16 text-center">
-          <UsersIcon className="mx-auto size-10 text-muted-foreground/40" />
-          <h2 className="mt-4 text-lg font-semibold">No crews yet</h2>
-          <p className="mt-1.5 text-sm text-muted-foreground max-w-xs mx-auto">
-            Keep going to screenings and you&apos;ll find your people. We&apos;ll let you know when it&apos;s time.
+        <div className="flex flex-col items-center rounded-2xl bg-gradient-to-b from-amber-50/50 to-transparent border border-amber-200/30 py-20 px-8 text-center">
+          <div className="flex size-14 items-center justify-center rounded-full bg-amber-100">
+            <UsersIcon className="size-7 text-amber-600" />
+          </div>
+          <h2 className="mt-6 text-xl font-bold">Your crew is out there</h2>
+          <p className="mt-3 max-w-md text-base leading-relaxed text-muted-foreground">
+            It takes 2-3 screenings to find your people. Show up, watch a
+            film, stay for the conversation &mdash; we&apos;ll notice when
+            the same faces keep coming back.
           </p>
           <Link
             href="/screenings"
-            className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+            className="mt-6 inline-flex h-11 items-center gap-2 rounded-xl bg-amber-500 px-6 text-sm font-semibold text-[oklch(0.15_0.02_60)] shadow-md shadow-amber-500/20 hover:bg-amber-400 transition-all"
           >
             Browse screenings
           </Link>
