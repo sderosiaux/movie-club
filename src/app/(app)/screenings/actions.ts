@@ -120,3 +120,43 @@ export async function leaveScreening(screeningId: string) {
   revalidatePath(`/screenings/${screeningId}`);
   revalidatePath("/screenings");
 }
+
+export async function completeScreening(screeningId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  // Only organizer can complete
+  await supabase
+    .from("screenings")
+    .update({ status: "completed" })
+    .eq("id", screeningId)
+    .eq("organizer_id", user.id);
+
+  revalidatePath(`/screenings/${screeningId}`);
+}
+
+export async function submitWouldGoAgain(
+  screeningId: string,
+  selectedUserIds: string[]
+) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  if (selectedUserIds.length > 0) {
+    const rows = selectedUserIds.map((toId) => ({
+      screening_id: screeningId,
+      from_user_id: user.id,
+      to_user_id: toId,
+    }));
+
+    await supabase.from("would_go_again").insert(rows);
+  }
+
+  redirect(`/screenings/${screeningId}`);
+}

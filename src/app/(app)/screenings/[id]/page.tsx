@@ -10,7 +10,9 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import { JoinButton } from "@/components/screenings/join-button";
+import { CompleteScreeningButton } from "@/components/screenings/complete-screening-button";
 import {
   ArrowLeftIcon,
   CalendarIcon,
@@ -19,6 +21,7 @@ import {
   StarIcon,
   UsersIcon,
   GlassWaterIcon,
+  MessageSquareIcon,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -251,8 +254,8 @@ export default async function ScreeningDetailPage({
         </div>
       </div>
 
-      {/* Join button */}
-      {user && (
+      {/* Join button — only for upcoming screenings */}
+      {user && screening.status === "upcoming" && (
         <JoinButton
           screeningId={screening.id}
           isJoined={isJoined}
@@ -261,6 +264,21 @@ export default async function ScreeningDetailPage({
           waitlistPosition={waitlistPosition}
           spotsLeft={spotsLeft}
         />
+      )}
+
+      {/* Mark as Complete — organizer only, upcoming screenings */}
+      {user && screening.status === "upcoming" && isOrganizer && (
+        <CompleteScreeningButton screeningId={screening.id} />
+      )}
+
+      {/* Give Feedback — completed screenings */}
+      {user && screening.status === "completed" && (
+        <Link href={`/screenings/${screening.id}/feedback`}>
+          <Button variant="outline" size="lg" className="w-full">
+            <MessageSquareIcon className="size-4" />
+            Give Feedback
+          </Button>
+        </Link>
       )}
 
       <Separator />
