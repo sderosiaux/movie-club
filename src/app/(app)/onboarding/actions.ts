@@ -42,4 +42,7 @@ export async function completeOnboarding(data: {
       })),
     );
   }
+
+  // Redirect to screenings — the next sign-in will refresh the JWT with onboardingCompleted=true
+  redirect("/screenings");
 }

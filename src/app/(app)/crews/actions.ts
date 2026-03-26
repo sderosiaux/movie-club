@@ -14,6 +14,15 @@ import { eq, and } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
+async function verifyCrewMembership(crewId: string, userId: string) {
+  const member = await db
+    .select()
+    .from(crewMembers)
+    .where(and(eq(crewMembers.crewId, crewId), eq(crewMembers.profileId, userId)))
+    .limit(1);
+  if (member.length === 0) throw new Error("Not a crew member");
+}
+
 export async function createCrew(name: string, memberIds: string[]) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
@@ -49,6 +58,7 @@ export async function proposeFilm(
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
   const userId = session.user.id;
+  await verifyCrewMembership(crewId, userId);
 
   await db.insert(crewFilmVotes).values({
     crewId,
@@ -65,6 +75,7 @@ export async function voteForFilm(voteId: string, crewId: string) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
   const userId = session.user.id;
+  await verifyCrewMembership(crewId, userId);
 
   await db.insert(crewFilmVoteBallots).values({
     voteId,
@@ -84,6 +95,7 @@ export async function createDraftFromVoteWinner(
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
   const userId = session.user.id;
+  await verifyCrewMembership(crewId, userId);
 
   const [data] = await db
     .insert(screenings)
@@ -118,6 +130,9 @@ export async function repostScreening(screeningId: string) {
     .where(eq(screenings.id, screeningId));
 
   if (!original) throw new Error("Screening not found");
+  if (original.crewId) {
+    await verifyCrewMembership(original.crewId, userId);
+  }
 
   const nextDatetime = original.datetime
     ? new Date(

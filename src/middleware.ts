@@ -1,8 +1,5 @@
 import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { profiles } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
 
 export default auth((req) => {
   const { nextUrl } = req;
@@ -24,20 +21,10 @@ export default auth((req) => {
     return NextResponse.redirect(new URL("/screenings", req.url));
   }
 
-  // Redirect to onboarding if not completed
+  // Redirect to onboarding if not completed (read from session/JWT)
   if (isLoggedIn && nextUrl.pathname !== "/onboarding" && !isPublic) {
-    const userId = req.auth?.user?.id;
-    if (userId) {
-      const rows = db
-        .select({ onboardingCompleted: profiles.onboardingCompleted })
-        .from(profiles)
-        .where(eq(profiles.id, userId))
-        .all();
-
-      const profile = rows[0];
-      if (profile && !profile.onboardingCompleted) {
-        return NextResponse.redirect(new URL("/onboarding", req.url));
-      }
+    if (!(req.auth as any)?.onboardingCompleted) {
+      return NextResponse.redirect(new URL("/onboarding", req.url));
     }
   }
 

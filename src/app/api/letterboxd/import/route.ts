@@ -6,6 +6,13 @@ import { fetchLetterboxdDiary } from "@/lib/letterboxd";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
+  // CSRF origin check
+  const origin = request.headers.get("origin");
+  const host = request.headers.get("host");
+  if (origin && !origin.includes(host ?? "")) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -15,6 +22,11 @@ export async function POST(request: Request) {
   const { username } = await request.json();
   if (!username || typeof username !== "string") {
     return NextResponse.json({ error: "Username required" }, { status: 400 });
+  }
+
+  // Validate username format
+  if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
+    return NextResponse.json({ error: "Invalid username format" }, { status: 400 });
   }
 
   const diary = await fetchLetterboxdDiary(username);
