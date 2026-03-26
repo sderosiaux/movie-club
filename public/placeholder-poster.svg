@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="342" height="513" viewBox="0 0 342 513" fill="none">
+  <rect width="342" height="513" rx="8" fill="#E5E7EB"/>
+  <g transform="translate(131, 216)">
+    <rect x="0" y="10" width="80" height="60" rx="4" fill="#9CA3AF"/>
+    <polygon points="10,60 30,40 50,55 60,45 70,60" fill="#D1D5DB"/>
+    <circle cx="22" cy="28" r="8" fill="#D1D5DB"/>
+  </g>
+  <text x="171" y="310" text-anchor="middle" font-family="system-ui, sans-serif" font-size="14" font-weight="500" fill="#6B7280">No Poster</text>
+</svg>
