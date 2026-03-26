@@ -4,7 +4,6 @@ import { db } from "@/lib/db";
 import { profiles, cinemas } from "@/lib/db/schema";
 import { eq, asc } from "drizzle-orm";
 import { OnboardingWizard } from "@/components/onboarding/onboarding-wizard";
-import type { Cinema, Profile } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -34,8 +33,8 @@ export default async function OnboardingPage() {
     return (
       <div className="flex flex-1 items-center justify-center py-8">
         <OnboardingWizard
-          profile={newProfile as unknown as Profile}
-          cinemas={allCinemas as unknown as Cinema[]}
+          profile={newProfile}
+          cinemas={allCinemas}
         />
       </div>
     );
@@ -50,8 +49,8 @@ export default async function OnboardingPage() {
   return (
     <div className="flex flex-1 items-center justify-center py-8">
       <OnboardingWizard
-        profile={profile as unknown as Profile}
-        cinemas={allCinemas as unknown as Cinema[]}
+        profile={profile}
+        cinemas={allCinemas}
       />
     </div>
   );

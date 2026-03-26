@@ -10,6 +10,7 @@ import {
   AvatarGroup,
 } from "@/components/ui/avatar";
 import { CalendarIcon, MapPinIcon, StarIcon, UsersIcon } from "lucide-react";
+import { initials, formatDatetime } from "@/lib/utils";
 import type { Screening } from "@/lib/types";
 
 type Attendee = {
@@ -27,30 +28,6 @@ type Props = {
     attendees?: Attendee[];
   };
 };
-
-function formatDatetime(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleDateString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  }) +
-    " at " +
-    d.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
-}
-
-function initials(name: string): string {
-  return name
-    .split(" ")
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
 
 export function ScreeningCard({ screening }: Props) {
   const confirmed = screening.attendees?.filter(
@@ -111,9 +88,9 @@ export function ScreeningCard({ screening }: Props) {
                 {/* Organizer */}
                 {screening.organizer && (
                   <Avatar size="sm">
-                    {screening.organizer.photo_url && (
+                    {screening.organizer.photoUrl && (
                       <AvatarImage
-                        src={screening.organizer.photo_url}
+                        src={screening.organizer.photoUrl}
                         alt={screening.organizer.name}
                       />
                     )}

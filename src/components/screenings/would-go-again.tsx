@@ -9,7 +9,7 @@ import {
   AvatarImage,
 } from "@/components/ui/avatar";
 import { CheckIcon, Loader2Icon } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, initials } from "@/lib/utils";
 
 type Attendee = {
   id: string;
@@ -21,15 +21,6 @@ type Props = {
   screeningId: string;
   attendees: Attendee[];
 };
-
-function initials(name: string): string {
-  return name
-    .split(" ")
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
 
 export function WouldGoAgain({ screeningId, attendees }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());

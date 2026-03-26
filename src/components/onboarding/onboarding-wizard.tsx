@@ -42,11 +42,11 @@ export function OnboardingWizard({ profile, cinemas }: Props) {
 
   // Form state
   const [name, setName] = useState(profile.name || "");
-  const [photoUrl, setPhotoUrl] = useState(profile.photo_url || "");
+  const [photoUrl, setPhotoUrl] = useState(profile.photoUrl || "");
   const [neighborhood, setNeighborhood] = useState(profile.neighborhood || "");
   const [selectedCinemas, setSelectedCinemas] = useState<string[]>([]);
   const [selectedGenres, setSelectedGenres] = useState<string[]>([...(profile.genres || [])]);
-  const [letterboxd, setLetterboxd] = useState(profile.letterboxd_username || "");
+  const [letterboxd, setLetterboxd] = useState(profile.letterboxdUsername || "");
 
   function toggleCinema(id: string) {
     setSelectedCinemas((prev) =>

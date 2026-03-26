@@ -26,6 +26,7 @@ import {
   GlassWaterIcon,
   MessageSquareIcon,
 } from "lucide-react";
+import { initials, formatDatetime } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -39,33 +40,6 @@ type Attendee = {
     photo_url: string | null;
   };
 };
-
-function initials(name: string): string {
-  return name
-    .split(" ")
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
-
-function formatDatetime(iso: string): string {
-  const d = new Date(iso);
-  return (
-    d.toLocaleDateString("en-US", {
-      weekday: "long",
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-    }) +
-    " at " +
-    d.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    })
-  );
-}
 
 export default async function ScreeningDetailPage({
   params,
@@ -250,7 +224,7 @@ export default async function ScreeningDetailPage({
             </span>
             {spotsLeft > 0 ? (
               <span className="text-muted-foreground">
-                ({spotsLeft} {spotsLeft === 1 ? "remaining" : "remaining"})
+                ({spotsLeft} {spotsLeft === 1 ? "spot remaining" : "spots remaining"})
               </span>
             ) : (
               <Badge variant="secondary" className="ml-1">

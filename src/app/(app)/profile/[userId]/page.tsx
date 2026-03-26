@@ -4,7 +4,6 @@ import { profiles, profileCinemas, cinemas, screeningAttendees, screenings } fro
 import { eq, desc } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import type { Cinema } from "@/lib/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,6 +15,7 @@ import {
   PencilIcon,
   CalendarIcon,
 } from "lucide-react";
+import { initials, formatDate } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +45,7 @@ export default async function UserProfilePage({
     .innerJoin(cinemas, eq(profileCinemas.cinemaId, cinemas.id))
     .where(eq(profileCinemas.profileId, userId));
 
-  const cinemaList = userCinemas.map((r) => r.cinema) as unknown as Cinema[];
+  const cinemaList = userCinemas.map((r) => r.cinema);
 
   // Fetch recent screenings
   const recentScreeningsRaw = await db
@@ -73,12 +73,7 @@ export default async function UserProfilePage({
     return new Date(b.datetime).getTime() - new Date(a.datetime).getTime();
   });
 
-  const initials = profile.name
-    .split(" ")
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
+  const profileInitials = initials(profile.name);
 
   const genres = (profile.genres ?? []) as string[];
 
@@ -90,7 +85,7 @@ export default async function UserProfilePage({
           {profile.photoUrl && (
             <AvatarImage src={profile.photoUrl} alt={profile.name} />
           )}
-          <AvatarFallback className="text-lg">{initials}</AvatarFallback>
+          <AvatarFallback className="text-lg">{profileInitials}</AvatarFallback>
         </Avatar>
 
         <div className="flex-1 space-y-1 pt-1">
@@ -183,16 +178,7 @@ export default async function UserProfilePage({
                         {s.datetime && (
                           <>
                             {s.cinemaName && " \u00B7 "}
-                            <time>
-                              {new Date(s.datetime).toLocaleDateString(
-                                "en-US",
-                                {
-                                  month: "short",
-                                  day: "numeric",
-                                  year: "numeric",
-                                },
-                              )}
-                            </time>
+                            <time>{formatDate(s.datetime)}</time>
                           </>
                         )}
                       </p>

@@ -1,48 +1,14 @@
-export type Cinema = {
-  id: string;
-  name: string;
-  slug: string;
-  borough: string;
-  neighborhood: string | null;
-  websiteUrl: string | null;
-  logoUrl: string | null;
-};
+import type { InferSelectModel } from "drizzle-orm";
+import * as schema from "./db/schema";
 
-export type Profile = {
-  id: string;
-  name: string;
-  photo_url: string | null;
-  neighborhood: string | null;
-  genres: string[];
-  letterboxd_username: string | null;
-  letterboxd_data: Record<string, unknown>;
-  onboarding_completed: boolean;
-};
-
-export type Screening = {
-  id: string;
-  tmdbId: number;
-  filmTitle: string;
-  filmPosterPath: string | null;
-  filmGenres: string[];
-  filmRating: number | null;
-  cinemaId: string | null;
-  datetime: string | null;
-  afterSpot: string | null;
-  organizerId: string;
-  cap: number;
-  crewId: string | null;
-  status: "draft" | "upcoming" | "completed" | "cancelled";
-  createdAt: string;
+export type Cinema = InferSelectModel<typeof schema.cinemas>;
+export type Profile = InferSelectModel<typeof schema.profiles>;
+export type Screening = InferSelectModel<typeof schema.screenings> & {
   cinema?: Cinema | null;
   organizer?: Profile | null;
   attendee_count?: number;
 };
-
-export type Crew = {
-  id: string;
-  name: string | null;
-  created_at: string;
+export type Crew = InferSelectModel<typeof schema.crews> & {
   members?: Profile[];
 };
 

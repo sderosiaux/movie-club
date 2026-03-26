@@ -10,7 +10,7 @@ import {
   crewFilmVoteBallots,
   cinemas,
 } from "@/lib/db/schema";
-import { eq, inArray, desc, asc, and, ne } from "drizzle-orm";
+import { eq, inArray, desc, asc, and } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -34,25 +34,9 @@ import {
 import { FilmVotePanel, type FilmVote } from "@/components/crews/film-vote";
 import { RepostScreening } from "@/components/crews/repost-screening";
 import { WhatsAppGroupLink } from "@/components/crews/whatsapp-link";
+import { initials, formatDate } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
-
-function initials(name: string): string {
-  return name
-    .split(" ")
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
 
 type CrewScreening = {
   id: string;

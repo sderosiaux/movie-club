@@ -4,7 +4,6 @@ import { db } from "@/lib/db";
 import { cinemas } from "@/lib/db/schema";
 import { asc } from "drizzle-orm";
 import { ScreeningForm } from "@/components/screenings/screening-form";
-import type { Cinema } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +18,7 @@ export default async function NewScreeningPage() {
 
   return (
     <div className="w-full max-w-lg mx-auto">
-      <ScreeningForm cinemas={allCinemas as unknown as Cinema[]} />
+      <ScreeningForm cinemas={allCinemas} />
     </div>
   );
 }

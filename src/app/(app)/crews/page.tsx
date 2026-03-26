@@ -15,17 +15,9 @@ import { Badge } from "@/components/ui/badge";
 import { UsersIcon, FilmIcon } from "lucide-react";
 import { detectCrewCandidates } from "@/lib/crew-detection";
 import { CrewPrompt } from "@/components/crews/crew-prompt";
+import { initials } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
-
-function initials(name: string): string {
-  return name
-    .split(" ")
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
 
 export default async function CrewsPage() {
   const session = await auth();

@@ -19,21 +19,12 @@ import {
 } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { CheckIcon, HeartIcon, Loader2Icon, SparklesIcon, XIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, initials } from "@/lib/utils";
 import type { CrewCandidate } from "@/lib/crew-detection";
 
 type Props = {
   candidates: CrewCandidate[];
 };
-
-function initials(name: string): string {
-  return name
-    .split(" ")
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
 
 export function CrewPrompt({ candidates }: Props) {
   const [selected, setSelected] = useState<Set<string>>(

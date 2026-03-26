@@ -43,8 +43,6 @@ export async function detectCrewCandidates(
   if (sharedRows.length === 0) return [];
 
   // Check mutual would-go-again
-  const candidateIds = sharedRows.map((r) => r.profileId);
-
   const candidates: CrewCandidate[] = [];
 
   for (const row of sharedRows) {

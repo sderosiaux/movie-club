@@ -101,7 +101,8 @@ export default async function ScreeningsPage({
     .leftJoin(cinemas, eq(screenings.cinemaId, cinemas.id))
     .leftJoin(profiles, eq(screenings.organizerId, profiles.id))
     .where(and(...conditions))
-    .orderBy(asc(screenings.datetime));
+    .orderBy(asc(screenings.datetime))
+    .limit(20);
 
   // Fetch attendees for all screenings
   const screeningIds = rows.map((r) => r.screening.id);
@@ -138,7 +139,11 @@ export default async function ScreeningsPage({
     attendees: (attendeesByScreening[r.screening.id] ?? []).map((a) => ({
       profile_id: a.profileId,
       status: a.status,
-      profile: a.profile,
+      profile: {
+        id: a.profile?.id ?? a.profileId,
+        name: a.profile?.name ?? "",
+        photo_url: a.profile?.photo_url ?? null,
+      },
     })),
   }));
 
@@ -167,8 +172,7 @@ export default async function ScreeningsPage({
       {screeningsList && screeningsList.length > 0 ? (
         <div className="space-y-3">
           {screeningsList.map((s) => (
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            <ScreeningCard key={s.id} screening={s as any} />
+            <ScreeningCard key={s.id} screening={s} />
           ))}
         </div>
       ) : (
