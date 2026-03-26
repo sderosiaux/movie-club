@@ -1,9 +1,9 @@
 "use server";
 
 import { auth } from "@/lib/auth";
-import { db } from "@/lib/db";
+import { db, sqlite } from "@/lib/db";
 import { screenings, screeningAttendees, wouldGoAgain } from "@/lib/db/schema";
-import { eq, and, asc, count } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
@@ -57,32 +57,37 @@ export async function joinScreening(screeningId: string) {
   if (!session?.user?.id) redirect("/login");
   const userId = session.user.id;
 
-  const [screening] = await db
-    .select({ cap: screenings.cap })
-    .from(screenings)
-    .where(eq(screenings.id, screeningId));
+  const joinTx = sqlite.transaction(
+    (txScreeningId: string, txUserId: string) => {
+      const screening = sqlite
+        .prepare("SELECT cap FROM screening WHERE id = ?")
+        .get(txScreeningId) as { cap: number } | undefined;
+      if (!screening) throw new Error("Screening not found");
 
-  const [confirmedCount] = await db
-    .select({ value: count() })
-    .from(screeningAttendees)
-    .where(
-      and(
-        eq(screeningAttendees.screeningId, screeningId),
-        eq(screeningAttendees.status, "confirmed"),
-      ),
-    );
+      const existing = sqlite
+        .prepare(
+          "SELECT 1 FROM screening_attendee WHERE screening_id = ? AND profile_id = ?",
+        )
+        .get(txScreeningId, txUserId);
+      if (existing) return;
 
-  const status =
-    (confirmedCount?.value ?? 0) < (screening?.cap ?? 6)
-      ? "confirmed"
-      : "waitlisted";
+      const { count } = sqlite
+        .prepare(
+          "SELECT COUNT(*) as count FROM screening_attendee WHERE screening_id = ? AND status = 'confirmed'",
+        )
+        .get(txScreeningId) as { count: number };
 
-  await db.insert(screeningAttendees).values({
-    screeningId,
-    profileId: userId,
-    status,
-  });
+      const status = count < screening.cap ? "confirmed" : "waitlisted";
 
+      sqlite
+        .prepare(
+          "INSERT INTO screening_attendee (screening_id, profile_id, status, joined_at) VALUES (?, ?, ?, ?)",
+        )
+        .run(txScreeningId, txUserId, status, new Date().toISOString());
+    },
+  );
+
+  joinTx(screeningId, userId);
   revalidatePath(`/screenings/${screeningId}`);
   revalidatePath("/screenings");
 }
@@ -92,41 +97,31 @@ export async function leaveScreening(screeningId: string) {
   if (!session?.user?.id) redirect("/login");
   const userId = session.user.id;
 
-  await db
-    .delete(screeningAttendees)
-    .where(
-      and(
-        eq(screeningAttendees.screeningId, screeningId),
-        eq(screeningAttendees.profileId, userId),
-      ),
-    );
+  const leaveTx = sqlite.transaction(
+    (txScreeningId: string, txUserId: string) => {
+      sqlite
+        .prepare(
+          "DELETE FROM screening_attendee WHERE screening_id = ? AND profile_id = ?",
+        )
+        .run(txScreeningId, txUserId);
 
-  // Promote first waitlisted person
-  const nextInLine = await db
-    .select({ profileId: screeningAttendees.profileId })
-    .from(screeningAttendees)
-    .where(
-      and(
-        eq(screeningAttendees.screeningId, screeningId),
-        eq(screeningAttendees.status, "waitlisted"),
-      ),
-    )
-    .orderBy(asc(screeningAttendees.joinedAt))
-    .limit(1)
-    .then((rows) => rows[0]);
+      const next = sqlite
+        .prepare(
+          "SELECT profile_id FROM screening_attendee WHERE screening_id = ? AND status = 'waitlisted' ORDER BY joined_at ASC LIMIT 1",
+        )
+        .get(txScreeningId) as { profile_id: string } | undefined;
 
-  if (nextInLine) {
-    await db
-      .update(screeningAttendees)
-      .set({ status: "confirmed" })
-      .where(
-        and(
-          eq(screeningAttendees.screeningId, screeningId),
-          eq(screeningAttendees.profileId, nextInLine.profileId),
-        ),
-      );
-  }
+      if (next) {
+        sqlite
+          .prepare(
+            "UPDATE screening_attendee SET status = 'confirmed' WHERE screening_id = ? AND profile_id = ?",
+          )
+          .run(txScreeningId, next.profile_id);
+      }
+    },
+  );
 
+  leaveTx(screeningId, userId);
   revalidatePath(`/screenings/${screeningId}`);
   revalidatePath("/screenings");
 }
