@@ -5,7 +5,6 @@ import Image from "next/image";
 import { posterUrl } from "@/lib/tmdb";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Avatar,
   AvatarFallback,
@@ -19,10 +18,10 @@ import {
   ArrowLeftIcon,
   CalendarIcon,
   FilmIcon,
-  MessageSquareIcon,
-  RefreshCwIcon,
-  VoteIcon,
 } from "lucide-react";
+import { FilmVotePanel, type FilmVote } from "@/components/crews/film-vote";
+import { RepostScreening } from "@/components/crews/repost-screening";
+import { WhatsAppGroupLink } from "@/components/crews/whatsapp-link";
 
 export const dynamic = "force-dynamic";
 
@@ -165,6 +164,44 @@ export default async function CrewDashboardPage({
   const currentTurnIndex =
     members.length > 0 ? totalScreenings % members.length : 0;
   const currentTurnMember = members[currentTurnIndex];
+  const isMyTurn = currentTurnMember?.profile_id === user.id;
+
+  // Fetch film votes with ballot counts
+  const { data: votesRaw } = await supabase
+    .from("crew_film_votes")
+    .select("id, tmdb_id, film_title, film_poster_path, proposed_by")
+    .eq("crew_id", id);
+
+  const voteRows = votesRaw ?? [];
+  let filmVotes: FilmVote[] = [];
+
+  if (voteRows.length > 0) {
+    const voteIds = voteRows.map((v) => v.id);
+    const { data: ballotsRaw } = await supabase
+      .from("crew_film_vote_ballots")
+      .select("vote_id, profile_id")
+      .in("vote_id", voteIds);
+
+    const ballots = ballotsRaw ?? [];
+    const ballotsByVote: Record<string, string[]> = {};
+    for (const b of ballots) {
+      if (!ballotsByVote[b.vote_id]) ballotsByVote[b.vote_id] = [];
+      ballotsByVote[b.vote_id].push(b.profile_id);
+    }
+
+    filmVotes = voteRows.map((v) => ({
+      id: v.id,
+      tmdb_id: v.tmdb_id,
+      film_title: v.film_title,
+      film_poster_path: v.film_poster_path,
+      proposed_by: v.proposed_by,
+      ballot_count: ballotsByVote[v.id]?.length ?? 0,
+      voted_by_me: ballotsByVote[v.id]?.includes(user.id) ?? false,
+    }));
+  }
+
+  // Last completed crew screening (for repost)
+  const lastCompleted = crewScreenings.find((s) => s.status === "completed") ?? null;
 
   return (
     <div className="space-y-6">
@@ -216,21 +253,22 @@ export default async function CrewDashboardPage({
         </Card>
       )}
 
-      {/* Action buttons (placeholders for Task 14) */}
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-        <Button variant="outline" size="lg" className="justify-start gap-2" disabled>
-          <RefreshCwIcon className="size-4" />
-          Same time next week?
-        </Button>
-        <Button variant="outline" size="lg" className="justify-start gap-2" disabled>
-          <VoteIcon className="size-4" />
-          Vote on next film
-        </Button>
-        <Button variant="outline" size="lg" className="justify-start gap-2" disabled>
-          <MessageSquareIcon className="size-4" />
-          Create group chat
-        </Button>
-      </div>
+      {/* Repost — "Same time next week?" */}
+      <RepostScreening lastScreening={lastCompleted} />
+
+      {/* Film voting */}
+      <FilmVotePanel
+        crewId={id}
+        votes={filmVotes}
+        currentUserId={user.id}
+        isMyTurn={isMyTurn}
+      />
+
+      {/* WhatsApp group link */}
+      <WhatsAppGroupLink
+        crewName={crew.name || "Unnamed Crew"}
+        memberCount={members.length}
+      />
 
       <Separator />
 
