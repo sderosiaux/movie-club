@@ -10,14 +10,18 @@ export default function LoginPage() {
       <div className="relative hidden w-1/2 lg:block">
         <Image
           src="/images/hero-friends.png"
-          alt=""
+          alt="Friends at a Brooklyn bar after a movie"
           fill
           className="object-cover"
           priority
+          sizes="50vw"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent to-background/80" />
-        <div className="absolute bottom-12 left-12 right-12">
-          <blockquote className="text-xl font-medium italic text-white drop-shadow-lg">
+        <div
+          className="absolute inset-0"
+          style={{ background: "linear-gradient(to right, transparent 50%, var(--background) 100%)" }}
+        />
+        <div className="absolute bottom-12 left-12 right-24">
+          <blockquote className="text-xl font-medium italic leading-relaxed text-white drop-shadow-lg">
             &ldquo;The best movie conversations happen right after you walk
             out.&rdquo;
           </blockquote>

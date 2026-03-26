@@ -132,3 +132,12 @@
 .safe-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
+
+/* Cinema theme custom colors */
+.bg-cinema-dark { background-color: #1a1510; }
+.bg-cinema-darker { background-color: #12100c; }
+.text-cinema-amber { color: #f59e0b; }
+.bg-cinema-amber { background-color: #f59e0b; }
+.bg-cinema-amber-hover:hover { background-color: #fbbf24; }
+.shadow-cinema-amber { box-shadow: 0 10px 25px -5px rgba(245, 158, 11, 0.25); }
+.border-cinema-amber { border-color: rgba(245, 158, 11, 0.3); }

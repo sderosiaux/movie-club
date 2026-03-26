@@ -187,7 +187,7 @@ export default async function CrewsPage() {
           </p>
           <Link
             href="/screenings"
-            className="mt-6 inline-flex h-11 items-center gap-2 rounded-xl bg-amber-500 px-6 text-sm font-semibold text-[oklch(0.15_0.02_60)] shadow-md shadow-amber-500/20 hover:bg-amber-400 transition-all"
+            className="mt-6 inline-flex h-11 items-center gap-2 rounded-xl bg-amber-500 px-6 text-sm font-semibold text-amber-950 shadow-md shadow-amber-500/20 hover:bg-amber-400 transition-all"
           >
             Browse screenings
           </Link>

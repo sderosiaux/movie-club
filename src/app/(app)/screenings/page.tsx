@@ -190,7 +190,7 @@ export default async function ScreeningsPage({
           </p>
           <Button
             render={<Link href="/screenings/new" />}
-            className="mt-6 h-11 px-6 bg-amber-500 text-[oklch(0.15_0.02_60)] hover:bg-amber-400 font-semibold shadow-md shadow-amber-500/20"
+            className="mt-6 h-11 px-6 bg-amber-500 text-amber-950 hover:bg-amber-400 font-semibold shadow-md shadow-amber-500/20"
           >
             <PlusIcon className="size-4" />
             Propose a screening

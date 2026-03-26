@@ -45,11 +45,11 @@ export function Header() {
     : "?";
 
   return (
-    <header className="sticky top-0 z-40 border-b border-amber-200/30 bg-background/90 backdrop-blur-md">
+    <header className="sticky top-0 z-40 border-b border-stone-200 bg-white/90 backdrop-blur-md">
       <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-4">
         <Link
           href="/screenings"
-          className="text-lg font-bold tracking-tight text-foreground"
+          className="text-lg font-bold tracking-tight text-stone-900"
         >
           <span className="text-amber-600">Movie</span> Club
         </Link>
