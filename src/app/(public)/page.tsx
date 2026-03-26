@@ -1,257 +1,165 @@
 import Link from "next/link";
 import Image from "next/image";
 
+const darkBg = "#1a1510";
+const darkerBg = "#12100c";
+const amber = "#f59e0b";
+const amberDark = "#451a03";
+const amberLight = "#fef3c7";
+const amberMid = "#b45309";
+const warmCream = "#fefaf0";
+const stone900 = "#1c1917";
+const stone500 = "#78716c";
+const stone400 = "#a8a29e";
+const amberShadow = "0 10px 25px -5px rgba(245,158,11,0.3)";
+const imgShadow = "0 20px 60px -15px rgba(0,0,0,0.2)";
+
+const overlay: React.CSSProperties = {
+  position: "absolute",
+  top: 0, left: 0, right: 0, bottom: 0,
+};
+
+const ctaStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  height: 56,
+  padding: "0 40px",
+  borderRadius: 12,
+  backgroundColor: amber,
+  color: amberDark,
+  fontWeight: 600,
+  fontSize: 16,
+  boxShadow: amberShadow,
+  transition: "all 0.2s",
+  textDecoration: "none",
+};
+
 export default function Home() {
   return (
-    <div className="flex min-h-screen flex-col">
-      {/* Hero — full bleed dark cinema */}
-      <section
-        className="relative flex items-end overflow-hidden"
-        style={{ minHeight: "90vh", backgroundColor: "#1a1510" }}
-      >
-        {/* Background image */}
-        <div className="absolute inset-0">
-          <Image
-            src="/images/hero-friends.png"
-            alt="Friends laughing together at a Brooklyn bar after a movie"
-            fill
-            className="object-cover"
-            style={{ opacity: 0.4 }}
-            priority
-            sizes="100vw"
-          />
-          {/* Gradient overlay */}
-          <div
-            className="absolute inset-0"
-            style={{
-              background:
-                "linear-gradient(to bottom, rgba(26,21,16,0.7) 0%, transparent 40%, rgba(26,21,16,0.95) 100%)",
-            }}
-          />
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
+      {/* Hero */}
+      <section style={{ position: "relative", minHeight: "90vh", display: "flex", alignItems: "flex-end", backgroundColor: darkBg, overflow: "hidden" }}>
+        <div style={overlay}>
+          <Image src="/images/hero-friends.png" alt="Friends laughing at a Brooklyn bar" fill style={{ objectFit: "cover", opacity: 0.4 }} priority sizes="100vw" />
+          <div style={{ ...overlay, background: `linear-gradient(to bottom, ${darkBg}cc 0%, transparent 40%, ${darkBg}f2 100%)` }} />
         </div>
 
-        <div className="relative mx-auto w-full max-w-5xl px-6 pb-24 pt-32 sm:pb-32">
-          <p
-            className="text-sm font-medium uppercase"
-            style={{ letterSpacing: "0.25em", color: "rgba(251,191,36,0.8)" }}
-          >
+        <div style={{ position: "relative", maxWidth: 1100, margin: "0 auto", width: "100%", padding: "128px 24px 96px" }}>
+          <p style={{ fontSize: 13, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.25em", color: "rgba(251,191,36,0.8)" }}>
             For NYC cinephiles
           </p>
-          <h1
-            className="mt-6 max-w-3xl text-4xl font-bold sm:text-6xl lg:text-7xl"
-            style={{ lineHeight: 1.08, letterSpacing: "-0.02em", color: "#ffffff" }}
-          >
+          <h1 style={{ marginTop: 24, maxWidth: 800, fontSize: "clamp(2.5rem, 6vw, 4.5rem)", fontWeight: 700, lineHeight: 1.08, letterSpacing: "-0.02em", color: "#fff" }}>
             Movies are better when you have someone to talk about them with
           </h1>
-          <p
-            className="mt-8 max-w-xl text-lg"
-            style={{ lineHeight: 1.7, color: "rgba(255,255,255,0.6)" }}
-          >
-            Find 3-5 people who love the same films you do. Watch together at
-            your favorite NYC cinemas. Grab a beer after and talk about what
-            you just saw. That&apos;s it.
+          <p style={{ marginTop: 32, maxWidth: 540, fontSize: 18, lineHeight: 1.7, color: "rgba(255,255,255,0.6)" }}>
+            Find 3-5 people who love the same films you do. Watch together at your favorite NYC cinemas. Grab a beer after and talk about what you just saw. That&apos;s it.
           </p>
-          <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:items-center">
-            <Link
-              href="/login"
-              className="inline-flex items-center justify-center rounded-xl text-base font-semibold transition-all"
-              style={{
-                height: 56,
-                padding: "0 40px",
-                backgroundColor: "#f59e0b",
-                color: "#451a03",
-                boxShadow: "0 10px 25px -5px rgba(245,158,11,0.3)",
-              }}
-            >
-              Find your crew
-            </Link>
-            <span className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>
-              Free. No app to download.
-            </span>
+          <div style={{ marginTop: 40, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 16 }}>
+            <Link href="/login" style={ctaStyle}>Find your crew</Link>
+            <span style={{ fontSize: 14, color: "rgba(255,255,255,0.4)" }}>Free. No app to download.</span>
           </div>
         </div>
       </section>
 
-      {/* Social proof — emotional quote */}
-      <section className="px-6 py-24" style={{ backgroundColor: "#fefaf0" }}>
-        <div className="mx-auto max-w-3xl text-center">
-          <blockquote
-            className="text-xl font-medium italic sm:text-2xl"
-            style={{ lineHeight: 1.7, color: "#292524" }}
-          >
-            &ldquo;I don&apos;t need a huge friend group. I just want a few
-            people who want to grab a beer after a screening and talk about
-            what we just watched.&rdquo;
+      {/* Quote */}
+      <section style={{ padding: "96px 24px", backgroundColor: warmCream }}>
+        <div style={{ maxWidth: 700, margin: "0 auto", textAlign: "center" }}>
+          <blockquote style={{ fontSize: "clamp(1.125rem, 2.5vw, 1.5rem)", fontWeight: 500, fontStyle: "italic", lineHeight: 1.7, color: stone900 }}>
+            &ldquo;I don&apos;t need a huge friend group. I just want a few people who want to grab a beer after a screening and talk about what we just watched.&rdquo;
           </blockquote>
-          <p className="mt-6 text-sm" style={{ color: "#a8a29e" }}>
+          <p style={{ marginTop: 24, fontSize: 14, color: stone400 }}>
             &mdash; A real post. 194 upvotes. 100+ people who felt the same.
           </p>
         </div>
       </section>
 
-      {/* How it works — alternating image + text */}
-      <section className="px-6 py-24" style={{ backgroundColor: "#ffffff" }}>
-        <div className="mx-auto max-w-5xl">
-          <h2
-            className="text-center text-sm font-semibold uppercase"
-            style={{ letterSpacing: "0.25em", color: "#a8a29e" }}
-          >
+      {/* How it works */}
+      <section style={{ padding: "96px 24px", backgroundColor: "#fff" }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+          <h2 style={{ textAlign: "center", fontSize: 13, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.25em", color: stone400 }}>
             How it works
           </h2>
 
-          {/* Step 1 */}
-          <div className="mt-20 grid items-center gap-10 md:grid-cols-2">
-            <div
-              className="relative w-full overflow-hidden rounded-2xl"
-              style={{ aspectRatio: "4/3", boxShadow: "0 20px 60px -15px rgba(0,0,0,0.2)" }}
-            >
-              <Image
-                src="/images/step-browse.png"
-                alt="Browsing movie screenings"
-                fill
-                className="object-cover"
-                sizes="(max-width: 768px) 100vw, 50vw"
-              />
-            </div>
-            <div>
-              <span
-                className="inline-flex items-center justify-center rounded-full text-sm font-bold"
-                style={{ height: 36, width: 36, backgroundColor: "#fef3c7", color: "#b45309" }}
-              >
-                1
-              </span>
-              <h3 className="mt-4 text-2xl font-bold" style={{ color: "#1c1917" }}>
-                Browse what&apos;s showing
-              </h3>
-              <p className="mt-3 text-base" style={{ lineHeight: 1.7, color: "#78716c" }}>
-                See real screenings at Nitehawk, BAM, Alamo Drafthouse, and
-                every indie cinema in NYC. Someone already picked the film
-                and the showtime. You just show up.
-              </p>
-            </div>
-          </div>
-
-          {/* Step 2 */}
-          <div className="mt-24 grid items-center gap-10 md:grid-cols-2">
-            <div className="order-2 md:order-1">
-              <span
-                className="inline-flex items-center justify-center rounded-full text-sm font-bold"
-                style={{ height: 36, width: 36, backgroundColor: "#fef3c7", color: "#b45309" }}
-              >
-                2
-              </span>
-              <h3 className="mt-4 text-2xl font-bold" style={{ color: "#1c1917" }}>
-                Join a small group
-              </h3>
-              <p className="mt-3 text-base" style={{ lineHeight: 1.7, color: "#78716c" }}>
-                Groups are capped at 6 people by design. No awkward Meetup
-                crowds of 25 people standing outside a theater. Just a few
-                people who actually want to be there.
-              </p>
-            </div>
-            <div
-              className="relative order-1 w-full overflow-hidden rounded-2xl md:order-2"
-              style={{ aspectRatio: "4/3", boxShadow: "0 20px 60px -15px rgba(0,0,0,0.2)" }}
-            >
-              <Image
-                src="/images/step-join.png"
-                alt="Small group at the movies"
-                fill
-                className="object-cover"
-                sizes="(max-width: 768px) 100vw, 50vw"
-              />
-            </div>
-          </div>
-
-          {/* Step 3 */}
-          <div className="mt-24 grid items-center gap-10 md:grid-cols-2">
-            <div
-              className="relative w-full overflow-hidden rounded-2xl"
-              style={{ aspectRatio: "4/3", boxShadow: "0 20px 60px -15px rgba(0,0,0,0.2)" }}
-            >
-              <Image
-                src="/images/step-crew.png"
-                alt="Friends discussing a movie at a bar"
-                fill
-                className="object-cover"
-                sizes="(max-width: 768px) 100vw, 50vw"
-              />
-            </div>
-            <div>
-              <span
-                className="inline-flex items-center justify-center rounded-full text-sm font-bold"
-                style={{ height: 36, width: 36, backgroundColor: "#fef3c7", color: "#b45309" }}
-              >
-                3
-              </span>
-              <h3 className="mt-4 text-2xl font-bold" style={{ color: "#1c1917" }}>
-                Find your people
-              </h3>
-              <p className="mt-3 text-base" style={{ lineHeight: 1.7, color: "#78716c" }}>
-                After 2-3 screenings, you&apos;ll notice the same faces.
-                The ones who get your taste. The ones who stay for the
-                conversation. That&apos;s your crew. It happens naturally.
-              </p>
-            </div>
-          </div>
+          <Step
+            num="1"
+            title="Browse what's showing"
+            desc="See real screenings at Nitehawk, BAM, Alamo Drafthouse, and every indie cinema in NYC. Someone already picked the film and the showtime. You just show up."
+            img="/images/step-browse.png"
+            alt="Browsing movie screenings"
+            reverse={false}
+          />
+          <Step
+            num="2"
+            title="Join a small group"
+            desc="Groups are capped at 6 people by design. No awkward Meetup crowds of 25 people standing outside a theater. Just a few people who actually want to be there."
+            img="/images/step-join.png"
+            alt="Small group at the movies"
+            reverse
+          />
+          <Step
+            num="3"
+            title="Find your people"
+            desc="After 2-3 screenings, you'll notice the same faces. The ones who get your taste. The ones who stay for the conversation. That's your crew. It happens naturally."
+            img="/images/step-crew.png"
+            alt="Friends discussing a movie at a bar"
+            reverse={false}
+          />
         </div>
       </section>
 
-      {/* Emotional CTA */}
-      <section
-        className="relative overflow-hidden px-6 py-32"
-        style={{ backgroundColor: "#1a1510" }}
-      >
-        <div className="absolute inset-0">
-          <Image
-            src="/images/hero-friends.png"
-            alt=""
-            fill
-            className="object-cover"
-            style={{ opacity: 0.15 }}
-            sizes="100vw"
-          />
+      {/* CTA */}
+      <section style={{ position: "relative", overflow: "hidden", backgroundColor: darkBg, padding: "128px 24px" }}>
+        <div style={overlay}>
+          <Image src="/images/hero-friends.png" alt="" fill style={{ objectFit: "cover", opacity: 0.15 }} sizes="100vw" />
         </div>
-        <div className="relative mx-auto max-w-2xl text-center">
-          <h2
-            className="text-3xl font-bold sm:text-4xl lg:text-5xl"
-            style={{ lineHeight: 1.15, color: "#ffffff" }}
-          >
+        <div style={{ position: "relative", maxWidth: 640, margin: "0 auto", textAlign: "center" }}>
+          <h2 style={{ fontSize: "clamp(1.75rem, 4vw, 3rem)", fontWeight: 700, lineHeight: 1.15, color: "#fff" }}>
             The movie is almost secondary sometimes
           </h2>
-          <p
-            className="mt-8 text-lg"
-            style={{ lineHeight: 1.7, color: "rgba(255,255,255,0.6)" }}
-          >
-            It&apos;s the conversation after that matters. The debate over
-            whether the ending worked. The recommendation you never would have
-            found on your own. The regulars who become friends.
+          <p style={{ marginTop: 32, fontSize: 18, lineHeight: 1.7, color: "rgba(255,255,255,0.6)" }}>
+            It&apos;s the conversation after that matters. The debate over whether the ending worked. The recommendation you never would have found on your own. The regulars who become friends.
           </p>
-          <Link
-            href="/login"
-            className="mt-10 inline-flex items-center justify-center rounded-xl text-base font-semibold transition-all"
-            style={{
-              height: 56,
-              padding: "0 40px",
-              backgroundColor: "#f59e0b",
-              color: "#451a03",
-              boxShadow: "0 10px 25px -5px rgba(245,158,11,0.3)",
-            }}
-          >
-            Join Movie Club
-          </Link>
-          <p className="mt-5 text-sm" style={{ color: "rgba(255,255,255,0.3)" }}>
+          <div style={{ marginTop: 40 }}>
+            <Link href="/login" style={ctaStyle}>Join Movie Club</Link>
+          </div>
+          <p style={{ marginTop: 20, fontSize: 14, color: "rgba(255,255,255,0.3)" }}>
             Brooklyn, Manhattan, Queens. More neighborhoods coming.
           </p>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="px-6 py-10" style={{ backgroundColor: "#12100c" }}>
-        <p className="text-center text-sm" style={{ color: "rgba(255,255,255,0.25)" }}>
+      <footer style={{ padding: "40px 24px", backgroundColor: darkerBg }}>
+        <p style={{ textAlign: "center", fontSize: 14, color: "rgba(255,255,255,0.25)" }}>
           Movie Club &mdash; NYC
         </p>
       </footer>
+    </div>
+  );
+}
+
+function Step({ num, title, desc, img, alt, reverse }: {
+  num: string; title: string; desc: string; img: string; alt: string; reverse: boolean;
+}) {
+  const imageBlock = (
+    <div style={{ position: "relative", width: "100%", aspectRatio: "4/3", borderRadius: 16, overflow: "hidden", boxShadow: imgShadow }}>
+      <Image src={img} alt={alt} fill style={{ objectFit: "cover" }} sizes="(max-width: 768px) 100vw, 50vw" />
+    </div>
+  );
+  const textBlock = (
+    <div>
+      <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", height: 36, width: 36, borderRadius: "50%", backgroundColor: amberLight, color: amberMid, fontSize: 14, fontWeight: 700 }}>
+        {num}
+      </span>
+      <h3 style={{ marginTop: 16, fontSize: 24, fontWeight: 700, color: stone900 }}>{title}</h3>
+      <p style={{ marginTop: 12, fontSize: 16, lineHeight: 1.7, color: stone500 }}>{desc}</p>
+    </div>
+  );
+
+  return (
+    <div style={{ marginTop: 80, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 40, alignItems: "center" }}>
+      {reverse ? <>{textBlock}{imageBlock}</> : <>{imageBlock}{textBlock}</>}
     </div>
   );
 }
