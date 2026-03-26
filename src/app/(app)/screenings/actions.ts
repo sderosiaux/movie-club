@@ -53,3 +53,70 @@ export async function createScreening(formData: {
   revalidatePath("/screenings");
   redirect(`/screenings/${data.id}`);
 }
+
+export async function joinScreening(screeningId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { data: screening } = await supabase
+    .from("screenings")
+    .select("cap")
+    .eq("id", screeningId)
+    .single();
+
+  const { count } = await supabase
+    .from("screening_attendees")
+    .select("*", { count: "exact", head: true })
+    .eq("screening_id", screeningId)
+    .eq("status", "confirmed");
+
+  const status =
+    (count ?? 0) < (screening?.cap ?? 6) ? "confirmed" : "waitlisted";
+
+  await supabase.from("screening_attendees").insert({
+    screening_id: screeningId,
+    profile_id: user.id,
+    status,
+  });
+
+  revalidatePath(`/screenings/${screeningId}`);
+  revalidatePath("/screenings");
+}
+
+export async function leaveScreening(screeningId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  await supabase
+    .from("screening_attendees")
+    .delete()
+    .eq("screening_id", screeningId)
+    .eq("profile_id", user.id);
+
+  // Promote first waitlisted person
+  const { data: nextInLine } = await supabase
+    .from("screening_attendees")
+    .select("profile_id")
+    .eq("screening_id", screeningId)
+    .eq("status", "waitlisted")
+    .order("joined_at")
+    .limit(1)
+    .maybeSingle();
+
+  if (nextInLine) {
+    await supabase
+      .from("screening_attendees")
+      .update({ status: "confirmed" })
+      .eq("screening_id", screeningId)
+      .eq("profile_id", nextInLine.profile_id);
+  }
+
+  revalidatePath(`/screenings/${screeningId}`);
+  revalidatePath("/screenings");
+}
