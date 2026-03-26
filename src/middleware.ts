@@ -1,5 +1,9 @@
-import { auth } from "@/lib/auth";
+import NextAuth from "next-auth";
+import { authConfig } from "@/lib/auth.config";
 import { NextResponse } from "next/server";
+
+// Edge-safe middleware — imports auth.config (no DB/Node deps)
+const { auth } = NextAuth(authConfig);
 
 export default auth((req) => {
   const { nextUrl } = req;
@@ -8,7 +12,6 @@ export default auth((req) => {
   const publicPaths = ["/login", "/"];
   const isPublic = publicPaths.some((p) => nextUrl.pathname === p);
 
-  // Allow Auth.js API routes
   if (nextUrl.pathname.startsWith("/api/auth")) {
     return NextResponse.next();
   }
@@ -21,7 +24,6 @@ export default auth((req) => {
     return NextResponse.redirect(new URL("/screenings", req.url));
   }
 
-  // Redirect to onboarding if not completed (read from session/JWT)
   if (isLoggedIn && nextUrl.pathname !== "/onboarding" && !isPublic) {
     if (!(req.auth as any)?.onboardingCompleted) {
       return NextResponse.redirect(new URL("/onboarding", req.url));

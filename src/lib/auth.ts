@@ -4,8 +4,13 @@ import Credentials from "next-auth/providers/credentials";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
+import { authConfig } from "./auth.config";
+
+// Full auth config — Node runtime only (uses better-sqlite3 via db)
+// Do NOT import this from middleware — use auth.config.ts instead
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  ...authConfig,
   adapter: DrizzleAdapter(db),
   providers: [
     Credentials({
@@ -21,7 +26,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!credentials?.email) return null;
         const email = credentials.email as string;
 
-        // Find or create user
         let user = await db.query.users.findFirst({
           where: (users, { eq }) => eq(users.email, email),
         });
@@ -42,8 +46,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
-  session: { strategy: "jwt" },
   callbacks: {
+    ...authConfig.callbacks,
     async jwt({ token, user }) {
       if (user) {
         const profile = await db
@@ -55,13 +59,5 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       return token;
     },
-    session({ session, token }) {
-      if (token?.sub) session.user.id = token.sub;
-      (session as any).onboardingCompleted = token.onboardingCompleted;
-      return session;
-    },
-  },
-  pages: {
-    signIn: "/login",
   },
 });
