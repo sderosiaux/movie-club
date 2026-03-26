@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { signOut } from "next-auth/react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -18,32 +18,21 @@ export function Header() {
   const [user, setUser] = useState<{
     id: string;
     name: string;
-    photo_url: string | null;
+    photoUrl: string | null;
   } | null>(null);
 
   useEffect(() => {
     async function load() {
-      const supabase = createClient();
-      const {
-        data: { user: authUser },
-      } = await supabase.auth.getUser();
-      if (!authUser) return;
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("id, name, photo_url")
-        .eq("id", authUser.id)
-        .single();
-
-      if (profile) setUser(profile);
+      const res = await fetch("/api/me");
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data) setUser(data);
     }
     load();
   }, []);
 
   async function handleSignOut() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/");
+    await signOut({ callbackUrl: "/" });
   }
 
   const initials = user?.name
@@ -68,7 +57,7 @@ export function Header() {
         <DropdownMenu>
           <DropdownMenuTrigger className="rounded-full outline-none ring-ring focus-visible:ring-2">
             <Avatar className="h-8 w-8">
-              {user?.photo_url && <AvatarImage src={user.photo_url} alt={user.name} />}
+              {user?.photoUrl && <AvatarImage src={user.photoUrl} alt={user.name} />}
               <AvatarFallback className="text-xs font-medium">
                 {initials}
               </AvatarFallback>

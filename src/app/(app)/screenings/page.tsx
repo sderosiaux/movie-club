@@ -1,6 +1,8 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { db } from "@/lib/db";
+import { screenings, cinemas, profiles, screeningAttendees } from "@/lib/db/schema";
+import { eq, and, gte, lt, isNull, inArray, asc } from "drizzle-orm";
 import { ScreeningCard } from "@/components/screenings/screening-card";
 import { FeedFilters } from "@/components/screenings/feed-filters";
 import { Button } from "@/components/ui/button";
@@ -48,64 +50,99 @@ export default async function ScreeningsPage({
   searchParams: SearchParams;
 }) {
   const params = await searchParams;
-  const supabase = await createClient();
 
   // Fetch cinemas for filters
-  const { data: cinemas } = await supabase
-    .from("cinemas")
-    .select("id, name, borough")
-    .order("name");
+  const allCinemas = await db
+    .select({ id: cinemas.id, name: cinemas.name, borough: cinemas.borough })
+    .from(cinemas)
+    .orderBy(asc(cinemas.name));
 
-  // Build screening query
-  let query = supabase
-    .from("screenings")
-    .select(
-      `
-      *,
-      cinema:cinemas(*),
-      organizer:profiles!organizer_id(*),
-      attendees:screening_attendees(
-        profile_id,
-        status,
-        profile:profiles(id, name, photo_url)
-      )
-    `
-    )
-    .eq("status", "upcoming")
-    .is("crew_id", null)
-    .order("datetime", { ascending: true });
+  // Build conditions
+  const conditions = [
+    eq(screenings.status, "upcoming"),
+    isNull(screenings.crewId),
+  ];
 
   // Date filter
   const range = dateRange(params.date ?? "all");
   if (range) {
-    query = query.gte("datetime", range.gte).lt("datetime", range.lt);
+    conditions.push(gte(screenings.datetime, range.gte));
+    conditions.push(lt(screenings.datetime, range.lt));
   }
 
-  // Borough filter — filter by cinema's borough via cinema_id
+  // Borough filter
   if (params.borough && params.borough !== "All") {
-    const boroughCinemaIds = (cinemas ?? [])
+    const boroughCinemaIds = allCinemas
       .filter(
-        (c: { borough: string }) =>
-          c.borough.toLowerCase() === params.borough!.toLowerCase()
+        (c) => c.borough.toLowerCase() === params.borough!.toLowerCase(),
       )
-      .map((c: { id: string }) => c.id);
+      .map((c) => c.id);
 
     if (boroughCinemaIds.length > 0) {
-      query = query.in("cinema_id", boroughCinemaIds);
+      conditions.push(inArray(screenings.cinemaId, boroughCinemaIds));
     } else {
-      // No cinemas in that borough — return empty
-      query = query.eq("cinema_id", "00000000-0000-0000-0000-000000000000");
+      conditions.push(eq(screenings.cinemaId, "00000000-0000-0000-0000-000000000000"));
     }
   }
 
   // Cinema filter
   if (params.cinema && params.cinema !== "all") {
-    query = query.eq("cinema_id", params.cinema);
+    conditions.push(eq(screenings.cinemaId, params.cinema));
   }
 
-  const { data: screenings } = await query;
+  // Fetch screenings with joins
+  const rows = await db
+    .select({
+      screening: screenings,
+      cinema: cinemas,
+      organizer: profiles,
+    })
+    .from(screenings)
+    .leftJoin(cinemas, eq(screenings.cinemaId, cinemas.id))
+    .leftJoin(profiles, eq(screenings.organizerId, profiles.id))
+    .where(and(...conditions))
+    .orderBy(asc(screenings.datetime));
 
-  const cinemaList = (cinemas ?? []).map((c: { id: string; name: string }) => ({
+  // Fetch attendees for all screenings
+  const screeningIds = rows.map((r) => r.screening.id);
+  const attendeesRaw =
+    screeningIds.length > 0
+      ? await db
+          .select({
+            screeningId: screeningAttendees.screeningId,
+            profileId: screeningAttendees.profileId,
+            status: screeningAttendees.status,
+            profile: {
+              id: profiles.id,
+              name: profiles.name,
+              photo_url: profiles.photoUrl,
+            },
+          })
+          .from(screeningAttendees)
+          .leftJoin(profiles, eq(screeningAttendees.profileId, profiles.id))
+          .where(inArray(screeningAttendees.screeningId, screeningIds))
+      : [];
+
+  // Group attendees by screening
+  const attendeesByScreening: Record<string, typeof attendeesRaw> = {};
+  for (const a of attendeesRaw) {
+    if (!attendeesByScreening[a.screeningId]) attendeesByScreening[a.screeningId] = [];
+    attendeesByScreening[a.screeningId].push(a);
+  }
+
+  // Assemble screenings with nested data
+  const screeningsList = rows.map((r) => ({
+    ...r.screening,
+    cinema: r.cinema,
+    organizer: r.organizer,
+    attendees: (attendeesByScreening[r.screening.id] ?? []).map((a) => ({
+      profile_id: a.profileId,
+      status: a.status,
+      profile: a.profile,
+    })),
+  }));
+
+  const cinemaList = allCinemas.map((c) => ({
     id: c.id,
     name: c.name,
   }));
@@ -127,9 +164,9 @@ export default async function ScreeningsPage({
       </Suspense>
 
       {/* Feed */}
-      {screenings && screenings.length > 0 ? (
+      {screeningsList && screeningsList.length > 0 ? (
         <div className="space-y-3">
-          {screenings.map((s) => (
+          {screeningsList.map((s) => (
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             <ScreeningCard key={s.id} screening={s as any} />
           ))}

@@ -1,4 +1,7 @@
-import { createClient } from "@/lib/supabase/server";
+import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { screenings, screeningAttendees, profiles, wouldGoAgain } from "@/lib/db/schema";
+import { eq, and, ne, count } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { WouldGoAgain } from "@/components/screenings/would-go-again";
@@ -6,47 +9,42 @@ import { ArrowLeftIcon, CheckCircle2Icon } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
-type Attendee = {
-  profile_id: string;
-  status: "confirmed" | "waitlisted";
-  profile: {
-    id: string;
-    name: string;
-    photo_url: string | null;
-  };
-};
-
 export default async function FeedbackPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+  const userId = session.user.id;
 
-  // Fetch screening — must be completed
-  const { data: screening } = await supabase
-    .from("screenings")
-    .select("id, status, film_title")
-    .eq("id", id)
-    .single();
+  // Fetch screening -- must be completed
+  const [screening] = await db
+    .select({
+      id: screenings.id,
+      status: screenings.status,
+      filmTitle: screenings.filmTitle,
+    })
+    .from(screenings)
+    .where(eq(screenings.id, id));
 
   if (!screening) notFound();
   if (screening.status !== "completed") redirect(`/screenings/${id}`);
 
   // Check if user already submitted feedback
-  const { count } = await supabase
-    .from("would_go_again")
-    .select("*", { count: "exact", head: true })
-    .eq("screening_id", id)
-    .eq("from_user_id", user.id);
+  const [feedbackCount] = await db
+    .select({ value: count() })
+    .from(wouldGoAgain)
+    .where(
+      and(
+        eq(wouldGoAgain.screeningId, id),
+        eq(wouldGoAgain.fromUserId, userId),
+      ),
+    );
 
-  const alreadySubmitted = (count ?? 0) > 0;
+  const alreadySubmitted = (feedbackCount?.value ?? 0) > 0;
 
   if (alreadySubmitted) {
     return (
@@ -73,16 +71,31 @@ export default async function FeedbackPage({
   }
 
   // Fetch attendees (excluding current user)
-  const { data: attendeesRaw } = await supabase
-    .from("screening_attendees")
-    .select("profile_id, status, profile:profiles(id, name, photo_url)")
-    .eq("screening_id", id)
-    .eq("status", "confirmed")
-    .neq("profile_id", user.id);
+  const attendeesRaw = await db
+    .select({
+      profileId: screeningAttendees.profileId,
+      status: screeningAttendees.status,
+      profile: {
+        id: profiles.id,
+        name: profiles.name,
+        photo_url: profiles.photoUrl,
+      },
+    })
+    .from(screeningAttendees)
+    .leftJoin(profiles, eq(screeningAttendees.profileId, profiles.id))
+    .where(
+      and(
+        eq(screeningAttendees.screeningId, id),
+        eq(screeningAttendees.status, "confirmed"),
+        ne(screeningAttendees.profileId, userId),
+      ),
+    );
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const attendees = (attendeesRaw ?? []) as any as Attendee[];
-  const attendeeProfiles = attendees.map((a) => a.profile);
+  const attendeeProfiles = attendeesRaw.map((a) => ({
+    id: a.profile?.id ?? a.profileId,
+    name: a.profile?.name ?? "",
+    photo_url: a.profile?.photo_url ?? null,
+  }));
 
   return (
     <div className="space-y-6">

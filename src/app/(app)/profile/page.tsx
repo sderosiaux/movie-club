@@ -1,14 +1,10 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { auth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProfilePage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
-  redirect(`/profile/${user.id}`);
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+  redirect(`/profile/${session.user.id}`);
 }

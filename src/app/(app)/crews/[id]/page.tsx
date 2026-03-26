@@ -1,4 +1,16 @@
-import { createClient } from "@/lib/supabase/server";
+import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
+import {
+  crews,
+  crewMembers,
+  profiles,
+  screenings,
+  screeningAttendees,
+  crewFilmVotes,
+  crewFilmVoteBallots,
+  cinemas,
+} from "@/lib/db/schema";
+import { eq, inArray, desc, asc, and, ne } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -42,27 +54,13 @@ function formatDate(iso: string): string {
   });
 }
 
-type CrewMember = {
-  profile_id: string;
-  turn_order: number;
-  joined_at: string;
-  profile: {
-    id: string;
-    name: string;
-    photo_url: string | null;
-    neighborhood: string | null;
-  };
-};
-
 type CrewScreening = {
   id: string;
   film_title: string;
   film_poster_path: string | null;
   datetime: string | null;
   status: string;
-  cinema: {
-    name: string;
-  } | null;
+  cinema: { name: string } | null;
 };
 
 export default async function CrewDashboardPage({
@@ -71,75 +69,114 @@ export default async function CrewDashboardPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+  const userId = session.user.id;
 
   // Fetch crew
-  const { data: crew } = await supabase
-    .from("crews")
-    .select("id, name, created_at")
-    .eq("id", id)
-    .single();
+  const [crew] = await db
+    .select({ id: crews.id, name: crews.name, createdAt: crews.createdAt })
+    .from(crews)
+    .where(eq(crews.id, id));
 
   if (!crew) notFound();
 
   // Fetch members
-  const { data: membersRaw } = await supabase
-    .from("crew_members")
-    .select(
-      "profile_id, turn_order, joined_at, profile:profiles(id, name, photo_url, neighborhood)"
-    )
-    .eq("crew_id", id)
-    .order("turn_order");
-
-  const members = (membersRaw ?? []) as unknown as CrewMember[];
+  const membersRaw = await db
+    .select({
+      profileId: crewMembers.profileId,
+      turnOrder: crewMembers.turnOrder,
+      joinedAt: crewMembers.joinedAt,
+      profile: {
+        id: profiles.id,
+        name: profiles.name,
+        photoUrl: profiles.photoUrl,
+        neighborhood: profiles.neighborhood,
+      },
+    })
+    .from(crewMembers)
+    .innerJoin(profiles, eq(crewMembers.profileId, profiles.id))
+    .where(eq(crewMembers.crewId, id))
+    .orderBy(asc(crewMembers.turnOrder));
 
   // Verify current user is a member
-  const isMember = members.some((m) => m.profile_id === user.id);
+  const isMember = membersRaw.some((m) => m.profileId === userId);
   if (!isMember) notFound();
 
-  // Fetch crew screenings (those with crew_id set)
-  const { data: crewScreeningsRaw } = await supabase
-    .from("screenings")
-    .select("id, film_title, film_poster_path, datetime, status, cinema:cinemas(name)")
-    .eq("crew_id", id)
-    .order("datetime", { ascending: false });
+  // Fetch crew screenings
+  const crewScreeningsRaw = await db
+    .select({
+      id: screenings.id,
+      filmTitle: screenings.filmTitle,
+      filmPosterPath: screenings.filmPosterPath,
+      datetime: screenings.datetime,
+      status: screenings.status,
+      cinemaName: cinemas.name,
+    })
+    .from(screenings)
+    .leftJoin(cinemas, eq(screenings.cinemaId, cinemas.id))
+    .where(eq(screenings.crewId, id))
+    .orderBy(desc(screenings.datetime));
 
-  // Also find screenings attended by 2+ crew members (organic shared screenings)
-  const memberIds = members.map((m) => m.profile_id);
+  const crewScreenings: CrewScreening[] = crewScreeningsRaw.map((s) => ({
+    id: s.id,
+    film_title: s.filmTitle,
+    film_poster_path: s.filmPosterPath,
+    datetime: s.datetime,
+    status: s.status,
+    cinema: s.cinemaName ? { name: s.cinemaName } : null,
+  }));
 
-  const { data: sharedScreeningsRaw } = await supabase
-    .from("screening_attendees")
-    .select(
-      "screening_id, profile_id, screening:screenings(id, film_title, film_poster_path, datetime, status, crew_id, cinema:cinemas(name))"
-    )
-    .in("profile_id", memberIds)
-    .eq("status", "confirmed");
+  // Find shared screenings attended by 2+ crew members
+  const memberIds = membersRaw.map((m) => m.profileId);
 
-  // Group by screening and filter to those with 2+ crew members
+  const sharedRows =
+    memberIds.length > 0
+      ? await db
+          .select({
+            screeningId: screeningAttendees.screeningId,
+            profileId: screeningAttendees.profileId,
+            screening: {
+              id: screenings.id,
+              filmTitle: screenings.filmTitle,
+              filmPosterPath: screenings.filmPosterPath,
+              datetime: screenings.datetime,
+              status: screenings.status,
+              crewId: screenings.crewId,
+            },
+            cinemaName: cinemas.name,
+          })
+          .from(screeningAttendees)
+          .innerJoin(screenings, eq(screeningAttendees.screeningId, screenings.id))
+          .leftJoin(cinemas, eq(screenings.cinemaId, cinemas.id))
+          .where(
+            and(
+              inArray(screeningAttendees.profileId, memberIds),
+              eq(screeningAttendees.status, "confirmed"),
+            ),
+          )
+      : [];
+
+  // Group by screening and filter to those with 2+ crew members (excluding crew-specific)
   const screeningAttendance: Record<
     string,
     { screening: CrewScreening; count: number }
   > = {};
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  for (const row of (sharedScreeningsRaw ?? []) as any[]) {
+  for (const row of sharedRows) {
     const s = row.screening;
-    if (!s || s.crew_id === id) continue; // skip crew-specific ones (already fetched)
-    const sid = s.id as string;
+    if (s.crewId === id) continue;
+    const sid = s.id;
     if (!screeningAttendance[sid]) {
       screeningAttendance[sid] = {
         screening: {
           id: s.id,
-          film_title: s.film_title,
-          film_poster_path: s.film_poster_path,
+          film_title: s.filmTitle,
+          film_poster_path: s.filmPosterPath,
           datetime: s.datetime,
           status: s.status,
-          cinema: s.cinema,
+          cinema: row.cinemaName ? { name: row.cinemaName } : null,
         },
         count: 0,
       };
@@ -156,52 +193,56 @@ export default async function CrewDashboardPage({
       return new Date(b.datetime).getTime() - new Date(a.datetime).getTime();
     });
 
-  const crewScreenings = (crewScreeningsRaw ?? []) as unknown as CrewScreening[];
   const allScreenings = [...crewScreenings, ...sharedScreenings];
 
   // Determine whose turn it is
   const totalScreenings = crewScreenings.length;
   const currentTurnIndex =
-    members.length > 0 ? totalScreenings % members.length : 0;
-  const currentTurnMember = members[currentTurnIndex];
-  const isMyTurn = currentTurnMember?.profile_id === user.id;
+    membersRaw.length > 0 ? totalScreenings % membersRaw.length : 0;
+  const currentTurnMember = membersRaw[currentTurnIndex];
+  const isMyTurn = currentTurnMember?.profileId === userId;
 
   // Fetch film votes with ballot counts
-  const { data: votesRaw } = await supabase
-    .from("crew_film_votes")
-    .select("id, tmdb_id, film_title, film_poster_path, proposed_by")
-    .eq("crew_id", id);
+  const voteRows = await db
+    .select({
+      id: crewFilmVotes.id,
+      tmdbId: crewFilmVotes.tmdbId,
+      filmTitle: crewFilmVotes.filmTitle,
+      filmPosterPath: crewFilmVotes.filmPosterPath,
+      proposedBy: crewFilmVotes.proposedBy,
+    })
+    .from(crewFilmVotes)
+    .where(eq(crewFilmVotes.crewId, id));
 
-  const voteRows = votesRaw ?? [];
   let filmVotes: FilmVote[] = [];
 
   if (voteRows.length > 0) {
     const voteIds = voteRows.map((v) => v.id);
-    const { data: ballotsRaw } = await supabase
-      .from("crew_film_vote_ballots")
-      .select("vote_id, profile_id")
-      .in("vote_id", voteIds);
+    const ballots = await db
+      .select({ voteId: crewFilmVoteBallots.voteId, profileId: crewFilmVoteBallots.profileId })
+      .from(crewFilmVoteBallots)
+      .where(inArray(crewFilmVoteBallots.voteId, voteIds));
 
-    const ballots = ballotsRaw ?? [];
     const ballotsByVote: Record<string, string[]> = {};
     for (const b of ballots) {
-      if (!ballotsByVote[b.vote_id]) ballotsByVote[b.vote_id] = [];
-      ballotsByVote[b.vote_id].push(b.profile_id);
+      if (!ballotsByVote[b.voteId]) ballotsByVote[b.voteId] = [];
+      ballotsByVote[b.voteId].push(b.profileId);
     }
 
     filmVotes = voteRows.map((v) => ({
       id: v.id,
-      tmdb_id: v.tmdb_id,
-      film_title: v.film_title,
-      film_poster_path: v.film_poster_path,
-      proposed_by: v.proposed_by,
+      tmdb_id: v.tmdbId,
+      film_title: v.filmTitle,
+      film_poster_path: v.filmPosterPath,
+      proposed_by: v.proposedBy ?? "",
       ballot_count: ballotsByVote[v.id]?.length ?? 0,
-      voted_by_me: ballotsByVote[v.id]?.includes(user.id) ?? false,
+      voted_by_me: ballotsByVote[v.id]?.includes(userId) ?? false,
     }));
   }
 
   // Last completed crew screening (for repost)
-  const lastCompleted = crewScreenings.find((s) => s.status === "completed") ?? null;
+  const lastCompleted =
+    crewScreenings.find((s) => s.status === "completed") ?? null;
 
   return (
     <div className="space-y-6">
@@ -220,18 +261,18 @@ export default async function CrewDashboardPage({
           {crew.name || "Unnamed Crew"}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Started {formatDate(crew.created_at)}
+          Started {crew.createdAt ? formatDate(crew.createdAt) : ""}
         </p>
       </div>
 
       {/* Turn indicator */}
-      {currentTurnMember && members.length > 1 && (
+      {currentTurnMember && membersRaw.length > 1 && (
         <Card className="bg-primary/[0.03] ring-primary/15">
           <CardContent className="flex items-center gap-3">
             <Avatar>
-              {currentTurnMember.profile.photo_url && (
+              {currentTurnMember.profile.photoUrl && (
                 <AvatarImage
-                  src={currentTurnMember.profile.photo_url}
+                  src={currentTurnMember.profile.photoUrl}
                   alt={currentTurnMember.profile.name}
                 />
               )}
@@ -241,7 +282,7 @@ export default async function CrewDashboardPage({
             </Avatar>
             <div>
               <p className="text-sm font-medium">
-                {currentTurnMember.profile_id === user.id
+                {currentTurnMember.profileId === userId
                   ? "Your turn to pick!"
                   : `${currentTurnMember.profile.name.split(" ")[0]}'s turn to pick`}
               </p>
@@ -253,21 +294,21 @@ export default async function CrewDashboardPage({
         </Card>
       )}
 
-      {/* Repost — "Same time next week?" */}
+      {/* Repost -- "Same time next week?" */}
       <RepostScreening lastScreening={lastCompleted} />
 
       {/* Film voting */}
       <FilmVotePanel
         crewId={id}
         votes={filmVotes}
-        currentUserId={user.id}
+        currentUserId={userId}
         isMyTurn={isMyTurn}
       />
 
       {/* WhatsApp group link */}
       <WhatsAppGroupLink
         crewName={crew.name || "Unnamed Crew"}
-        memberCount={members.length}
+        memberCount={membersRaw.length}
       />
 
       <Separator />
@@ -275,21 +316,21 @@ export default async function CrewDashboardPage({
       {/* Members */}
       <section className="space-y-3">
         <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          Members ({members.length})
+          Members ({membersRaw.length})
         </h2>
         <ul className="space-y-1">
-          {members.map((m, i) => {
+          {membersRaw.map((m, i) => {
             const isTurn = i === currentTurnIndex;
             return (
-              <li key={m.profile_id}>
+              <li key={m.profileId}>
                 <Link
                   href={`/profile/${m.profile.id}`}
                   className="flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-muted/50"
                 >
                   <Avatar>
-                    {m.profile.photo_url && (
+                    {m.profile.photoUrl && (
                       <AvatarImage
-                        src={m.profile.photo_url}
+                        src={m.profile.photoUrl}
                         alt={m.profile.name}
                       />
                     )}
@@ -307,12 +348,12 @@ export default async function CrewDashboardPage({
                       </p>
                     )}
                   </div>
-                  {isTurn && members.length > 1 && (
+                  {isTurn && membersRaw.length > 1 && (
                     <Badge variant="secondary" className="shrink-0">
                       Picking
                     </Badge>
                   )}
-                  {m.turn_order === 0 && (
+                  {m.turnOrder === 0 && (
                     <Badge variant="outline" className="shrink-0 text-xs">
                       Founder
                     </Badge>

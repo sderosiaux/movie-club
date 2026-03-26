@@ -66,8 +66,8 @@ export function ScreeningCard({ screening }: Props) {
           {/* Poster */}
           <div className="relative h-[140px] w-[94px] shrink-0 overflow-hidden rounded-md bg-muted">
             <Image
-              src={posterUrl(screening.film_poster_path, "w185")}
-              alt={screening.film_title}
+              src={posterUrl(screening.filmPosterPath, "w185")}
+              alt={screening.filmTitle}
               fill
               sizes="94px"
               className="object-cover"
@@ -79,12 +79,12 @@ export function ScreeningCard({ screening }: Props) {
             {/* Title + rating */}
             <div>
               <h3 className="truncate text-base font-semibold leading-tight text-foreground">
-                {screening.film_title}
+                {screening.filmTitle}
               </h3>
-              {screening.film_rating != null && screening.film_rating > 0 && (
+              {screening.filmRating != null && screening.filmRating > 0 && (
                 <div className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
                   <StarIcon className="size-3 fill-amber-400 text-amber-400" />
-                  <span>{screening.film_rating.toFixed(1)}</span>
+                  <span>{screening.filmRating.toFixed(1)}</span>
                 </div>
               )}
             </div>
@@ -157,9 +157,9 @@ export function ScreeningCard({ screening }: Props) {
             </div>
 
             {/* After-spot */}
-            {screening.after_spot && (
+            {screening.afterSpot && (
               <p className="mt-1.5 truncate text-xs text-muted-foreground italic">
-                {screening.after_spot}
+                {screening.afterSpot}
               </p>
             )}
           </div>

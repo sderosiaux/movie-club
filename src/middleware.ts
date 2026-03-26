@@ -1,56 +1,48 @@
-import { createServerClient } from "@supabase/ssr";
-import { NextResponse, type NextRequest } from "next/server";
+import { auth } from "@/lib/auth";
+import { NextResponse } from "next/server";
+import { db } from "@/lib/db";
+import { profiles } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 
-export async function middleware(request: NextRequest) {
-  const response = NextResponse.next({ request });
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            request.cookies.set(name, value);
-            response.cookies.set(name, value, options);
-          });
-        },
-      },
-    }
-  );
+export default auth((req) => {
+  const { nextUrl } = req;
+  const isLoggedIn = !!req.auth?.user;
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const publicPaths = ["/login", "/"];
+  const isPublic = publicPaths.some((p) => nextUrl.pathname === p);
 
-  const publicPaths = ["/login", "/auth/callback", "/"];
-  const isPublic = publicPaths.some((p) => request.nextUrl.pathname === p);
-
-  if (!user && !isPublic) {
-    return NextResponse.redirect(new URL("/login", request.url));
+  // Allow Auth.js API routes
+  if (nextUrl.pathname.startsWith("/api/auth")) {
+    return NextResponse.next();
   }
 
-  if (user && request.nextUrl.pathname === "/login") {
-    return NextResponse.redirect(new URL("/screenings", request.url));
+  if (!isLoggedIn && !isPublic) {
+    return NextResponse.redirect(new URL("/login", req.url));
+  }
+
+  if (isLoggedIn && nextUrl.pathname === "/login") {
+    return NextResponse.redirect(new URL("/screenings", req.url));
   }
 
   // Redirect to onboarding if not completed
-  if (user && request.nextUrl.pathname !== "/onboarding" && !isPublic) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("onboarding_completed")
-      .eq("id", user.id)
-      .single();
+  if (isLoggedIn && nextUrl.pathname !== "/onboarding" && !isPublic) {
+    const userId = req.auth?.user?.id;
+    if (userId) {
+      const rows = db
+        .select({ onboardingCompleted: profiles.onboardingCompleted })
+        .from(profiles)
+        .where(eq(profiles.id, userId))
+        .all();
 
-    if (profile && !profile.onboarding_completed) {
-      return NextResponse.redirect(new URL("/onboarding", request.url));
+      const profile = rows[0];
+      if (profile && !profile.onboardingCompleted) {
+        return NextResponse.redirect(new URL("/onboarding", req.url));
+      }
     }
   }
 
-  return response;
-}
+  return NextResponse.next();
+});
 
 export const config = {
   matcher: [

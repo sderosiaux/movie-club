@@ -1,4 +1,7 @@
-import { createClient } from "@/lib/supabase/server";
+import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { crews, crewMembers, profiles, screenings } from "@/lib/db/schema";
+import { eq, inArray, asc } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import {
@@ -24,89 +27,85 @@ function initials(name: string): string {
     .slice(0, 2);
 }
 
-type CrewRow = {
-  crew_id: string;
-  turn_order: number;
-  crew: {
-    id: string;
-    name: string | null;
-    created_at: string;
-  };
-};
-
-type CrewMember = {
-  profile_id: string;
-  turn_order: number;
-  profile: {
-    id: string;
-    name: string;
-    photo_url: string | null;
-  };
-};
-
 export default async function CrewsPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+  const userId = session.user.id;
 
   // Fetch user's crews
-  const { data: myCrewRows } = await supabase
-    .from("crew_members")
-    .select("crew_id, turn_order, crew:crews(id, name, created_at)")
-    .eq("profile_id", user.id)
-    .order("turn_order");
+  const myCrewRows = await db
+    .select({
+      crewId: crewMembers.crewId,
+      turnOrder: crewMembers.turnOrder,
+      crew: {
+        id: crews.id,
+        name: crews.name,
+        createdAt: crews.createdAt,
+      },
+    })
+    .from(crewMembers)
+    .innerJoin(crews, eq(crewMembers.crewId, crews.id))
+    .where(eq(crewMembers.profileId, userId))
+    .orderBy(asc(crewMembers.turnOrder));
 
-  const crewRows = (myCrewRows ?? []) as unknown as CrewRow[];
-  const crewIds = crewRows.map((r) => r.crew_id);
+  const crewIds = myCrewRows.map((r) => r.crewId);
 
   // Fetch members for all crews in one query
-  let membersByCrewId: Record<string, CrewMember[]> = {};
-  if (crewIds.length > 0) {
-    const { data: allMembers } = await supabase
-      .from("crew_members")
-      .select(
-        "crew_id, profile_id, turn_order, profile:profiles(id, name, photo_url)"
-      )
-      .in("crew_id", crewIds)
-      .order("turn_order");
+  type MemberRow = {
+    crewId: string;
+    profileId: string;
+    turnOrder: number;
+    profile: { id: string; name: string; photoUrl: string | null };
+  };
+  let membersByCrewId: Record<string, MemberRow[]> = {};
 
-    const members = (allMembers ?? []) as unknown as (CrewMember & {
-      crew_id: string;
-    })[];
-    membersByCrewId = members.reduce(
+  if (crewIds.length > 0) {
+    const allMembers = await db
+      .select({
+        crewId: crewMembers.crewId,
+        profileId: crewMembers.profileId,
+        turnOrder: crewMembers.turnOrder,
+        profile: {
+          id: profiles.id,
+          name: profiles.name,
+          photoUrl: profiles.photoUrl,
+        },
+      })
+      .from(crewMembers)
+      .innerJoin(profiles, eq(crewMembers.profileId, profiles.id))
+      .where(inArray(crewMembers.crewId, crewIds))
+      .orderBy(asc(crewMembers.turnOrder));
+
+    membersByCrewId = allMembers.reduce(
       (acc, m) => {
-        if (!acc[m.crew_id]) acc[m.crew_id] = [];
-        acc[m.crew_id].push(m);
+        if (!acc[m.crewId]) acc[m.crewId] = [];
+        acc[m.crewId].push(m);
         return acc;
       },
-      {} as Record<string, CrewMember[]>
+      {} as Record<string, MemberRow[]>,
     );
   }
 
   // Count screenings per crew
   let screeningCountByCrewId: Record<string, number> = {};
   if (crewIds.length > 0) {
-    const { data: screeningCounts } = await supabase
-      .from("screenings")
-      .select("crew_id")
-      .in("crew_id", crewIds);
+    const screeningRows = await db
+      .select({ crewId: screenings.crewId })
+      .from(screenings)
+      .where(inArray(screenings.crewId, crewIds));
 
-    screeningCountByCrewId = (screeningCounts ?? []).reduce(
+    screeningCountByCrewId = screeningRows.reduce(
       (acc, s) => {
-        const cid = s.crew_id as string;
+        const cid = s.crewId as string;
         acc[cid] = (acc[cid] || 0) + 1;
         return acc;
       },
-      {} as Record<string, number>
+      {} as Record<string, number>,
     );
   }
 
   // Detect crew candidates for the prompt
-  const candidates = await detectCrewCandidates(user.id);
-
-  // Only show prompt if user doesn't already have a crew with all candidates
+  const candidates = await detectCrewCandidates(userId);
   const showPrompt = candidates.length >= 2;
 
   return (
@@ -117,16 +116,16 @@ export default async function CrewsPage() {
       {showPrompt && <CrewPrompt candidates={candidates} />}
 
       {/* Crew list */}
-      {crewRows.length > 0 ? (
+      {myCrewRows.length > 0 ? (
         <div className="space-y-3">
-          {crewRows.map((row) => {
+          {myCrewRows.map((row) => {
             const crew = row.crew;
             const members = membersByCrewId[crew.id] ?? [];
             const screeningCount = screeningCountByCrewId[crew.id] ?? 0;
             const currentTurn = members.find(
               (m) =>
-                m.turn_order ===
-                (screeningCount % members.length)
+                m.turnOrder ===
+                screeningCount % members.length,
             );
 
             return (
@@ -164,10 +163,10 @@ export default async function CrewsPage() {
                     {/* Member avatars */}
                     <AvatarGroup>
                       {members.slice(0, 5).map((m) => (
-                        <Avatar key={m.profile_id} size="sm">
-                          {m.profile.photo_url && (
+                        <Avatar key={m.profileId} size="sm">
+                          {m.profile.photoUrl && (
                             <AvatarImage
-                              src={m.profile.photo_url}
+                              src={m.profile.photoUrl}
                               alt={m.profile.name}
                             />
                           )}

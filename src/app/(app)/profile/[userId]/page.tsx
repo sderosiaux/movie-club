@@ -1,7 +1,10 @@
-import { createClient } from "@/lib/supabase/server";
+import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { profiles, profileCinemas, cinemas, screeningAttendees, screenings } from "@/lib/db/schema";
+import { eq, desc } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import type { Profile, Cinema, Screening } from "@/lib/types";
+import type { Cinema } from "@/lib/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,42 +25,47 @@ export default async function UserProfilePage({
   params: Promise<{ userId: string }>;
 }) {
   const { userId } = await params;
-  const supabase = await createClient();
 
   // Check if viewer is the profile owner
-  const {
-    data: { user: currentUser },
-  } = await supabase.auth.getUser();
-  const isOwn = currentUser?.id === userId;
+  const session = await auth();
+  const isOwn = session?.user?.id === userId;
 
-  // Fetch profile, cinemas, and recent screenings in parallel
-  const [profileRes, cinemasRes, screeningsRes] = await Promise.all([
-    supabase.from("profiles").select("*").eq("id", userId).single(),
-    supabase
-      .from("profile_cinemas")
-      .select("cinema_id, cinemas(*)")
-      .eq("profile_id", userId),
-    supabase
-      .from("screening_attendees")
-      .select("screening_id, screenings(*, cinemas(*))")
-      .eq("profile_id", userId)
-      .order("joined_at", { ascending: false })
-      .limit(10),
-  ]);
+  // Fetch profile
+  const [profile] = await db
+    .select()
+    .from(profiles)
+    .where(eq(profiles.id, userId));
 
-  if (!profileRes.data) notFound();
+  if (!profile) notFound();
 
-  const profile = profileRes.data as Profile;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const cinemas = (cinemasRes.data ?? [])
-    .map((row: any) => row.cinemas)
-    .filter(Boolean) as Cinema[];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const recentScreenings = (screeningsRes.data ?? [])
-    .map((row: any) => row.screenings)
-    .filter(Boolean) as (Screening & { cinemas?: Cinema | null })[];
+  // Fetch preferred cinemas
+  const userCinemas = await db
+    .select({ cinema: cinemas })
+    .from(profileCinemas)
+    .innerJoin(cinemas, eq(profileCinemas.cinemaId, cinemas.id))
+    .where(eq(profileCinemas.profileId, userId));
 
-  // Sort screenings by datetime descending
+  const cinemaList = userCinemas.map((r) => r.cinema) as unknown as Cinema[];
+
+  // Fetch recent screenings
+  const recentScreeningsRaw = await db
+    .select({
+      screening: screenings,
+      cinemaName: cinemas.name,
+    })
+    .from(screeningAttendees)
+    .innerJoin(screenings, eq(screeningAttendees.screeningId, screenings.id))
+    .leftJoin(cinemas, eq(screenings.cinemaId, cinemas.id))
+    .where(eq(screeningAttendees.profileId, userId))
+    .orderBy(desc(screeningAttendees.joinedAt))
+    .limit(10);
+
+  const recentScreenings = recentScreeningsRaw.map((r) => ({
+    ...r.screening,
+    cinemaName: r.cinemaName,
+  }));
+
+  // Sort by datetime descending
   recentScreenings.sort((a, b) => {
     if (!a.datetime && !b.datetime) return 0;
     if (!a.datetime) return 1;
@@ -72,13 +80,15 @@ export default async function UserProfilePage({
     .toUpperCase()
     .slice(0, 2);
 
+  const genres = (profile.genres ?? []) as string[];
+
   return (
     <div className="space-y-6">
       {/* Header: avatar + name + neighborhood */}
       <div className="flex items-start gap-4">
         <Avatar className="h-20 w-20 text-xl">
-          {profile.photo_url && (
-            <AvatarImage src={profile.photo_url} alt={profile.name} />
+          {profile.photoUrl && (
+            <AvatarImage src={profile.photoUrl} alt={profile.name} />
           )}
           <AvatarFallback className="text-lg">{initials}</AvatarFallback>
         </Avatar>
@@ -91,9 +101,9 @@ export default async function UserProfilePage({
               {profile.neighborhood}
             </p>
           )}
-          {profile.letterboxd_username && (
+          {profile.letterboxdUsername && (
             <a
-              href={`https://letterboxd.com/${profile.letterboxd_username}`}
+              href={`https://letterboxd.com/${profile.letterboxdUsername}`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
@@ -115,13 +125,13 @@ export default async function UserProfilePage({
       </div>
 
       {/* Genres */}
-      {profile.genres.length > 0 && (
+      {genres.length > 0 && (
         <section className="space-y-2">
           <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Favorite Genres
           </h2>
           <div className="flex flex-wrap gap-1.5">
-            {profile.genres.map((genre) => (
+            {genres.map((genre) => (
               <Badge key={genre} variant="secondary">
                 {genre}
               </Badge>
@@ -131,13 +141,13 @@ export default async function UserProfilePage({
       )}
 
       {/* Preferred Cinemas */}
-      {cinemas.length > 0 && (
+      {cinemaList.length > 0 && (
         <section className="space-y-2">
           <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Preferred Cinemas
           </h2>
           <div className="flex flex-wrap gap-1.5">
-            {cinemas.map((cinema) => (
+            {cinemaList.map((cinema) => (
               <Badge key={cinema.id} variant="outline">
                 {cinema.name}
               </Badge>
@@ -166,15 +176,13 @@ export default async function UserProfilePage({
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="truncate text-sm font-medium">
-                        {s.film_title}
+                        {s.filmTitle}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {s.cinemas?.name ?? (s.cinema as Cinema)?.name ?? ""}
+                        {s.cinemaName ?? ""}
                         {s.datetime && (
                           <>
-                            {(s.cinemas?.name ||
-                              (s.cinema as Cinema)?.name) &&
-                              " \u00B7 "}
+                            {s.cinemaName && " \u00B7 "}
                             <time>
                               {new Date(s.datetime).toLocaleDateString(
                                 "en-US",
@@ -182,7 +190,7 @@ export default async function UserProfilePage({
                                   month: "short",
                                   day: "numeric",
                                   year: "numeric",
-                                }
+                                },
                               )}
                             </time>
                           </>

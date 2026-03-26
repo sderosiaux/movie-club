@@ -1,4 +1,7 @@
-import { createClient } from "@/lib/supabase/server";
+import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { screenings, cinemas, profiles, screeningAttendees } from "@/lib/db/schema";
+import { eq, and } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -70,73 +73,77 @@ export default async function ScreeningDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createClient();
 
-  // Fetch screening with cinema, organizer, and attendees
-  const { data: screening } = await supabase
-    .from("screenings")
-    .select(
-      `
-      *,
-      cinema:cinemas(*),
-      organizer:profiles!organizer_id(*),
-      attendees:screening_attendees(
-        profile_id,
-        status,
-        joined_at,
-        profile:profiles(id, name, photo_url)
-      )
-    `
-    )
-    .eq("id", id)
-    .single();
+  // Fetch screening with cinema and organizer
+  const [row] = await db
+    .select({
+      screening: screenings,
+      cinema: cinemas,
+      organizer: profiles,
+    })
+    .from(screenings)
+    .leftJoin(cinemas, eq(screenings.cinemaId, cinemas.id))
+    .leftJoin(profiles, eq(screenings.organizerId, profiles.id))
+    .where(eq(screenings.id, id));
 
-  if (!screening) notFound();
+  if (!row) notFound();
+
+  const screening = row.screening;
+  const cinema = row.cinema;
+  const organizer = row.organizer;
 
   // Current user
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const session = await auth();
+  const user = session?.user;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const attendees = (screening.attendees ?? []) as any as Attendee[];
+  // Fetch attendees
+  const attendeesRaw = await db
+    .select({
+      profileId: screeningAttendees.profileId,
+      status: screeningAttendees.status,
+      joinedAt: screeningAttendees.joinedAt,
+      profile: {
+        id: profiles.id,
+        name: profiles.name,
+        photo_url: profiles.photoUrl,
+      },
+    })
+    .from(screeningAttendees)
+    .leftJoin(profiles, eq(screeningAttendees.profileId, profiles.id))
+    .where(eq(screeningAttendees.screeningId, id));
+
+  const attendees: Attendee[] = attendeesRaw.map((a) => ({
+    profile_id: a.profileId,
+    status: a.status as "confirmed" | "waitlisted",
+    joined_at: a.joinedAt ?? "",
+    profile: {
+      id: a.profile?.id ?? a.profileId,
+      name: a.profile?.name ?? "",
+      photo_url: a.profile?.photo_url ?? null,
+    },
+  }));
+
   const confirmed = attendees
     .filter((a) => a.status === "confirmed")
     .sort(
       (a, b) =>
-        new Date(a.joined_at).getTime() - new Date(b.joined_at).getTime()
+        new Date(a.joined_at).getTime() - new Date(b.joined_at).getTime(),
     );
   const waitlisted = attendees
     .filter((a) => a.status === "waitlisted")
     .sort(
       (a, b) =>
-        new Date(a.joined_at).getTime() - new Date(b.joined_at).getTime()
+        new Date(a.joined_at).getTime() - new Date(b.joined_at).getTime(),
     );
 
   const spotsLeft = screening.cap - confirmed.length;
-  const isOrganizer = user?.id === screening.organizer_id;
+  const isOrganizer = user?.id === screening.organizerId;
   const myAttendance = attendees.find((a) => a.profile_id === user?.id);
   const isJoined = myAttendance?.status === "confirmed";
   const isWaitlisted = myAttendance?.status === "waitlisted";
   const waitlistPosition = isWaitlisted
     ? waitlisted.findIndex((a) => a.profile_id === user?.id) + 1
     : 0;
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const organizer = screening.organizer as any as {
-    id: string;
-    name: string;
-    photo_url: string | null;
-  };
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const cinema = screening.cinema as any as {
-    id: string;
-    name: string;
-    website_url: string | null;
-    borough: string;
-    neighborhood: string | null;
-  } | null;
 
   return (
     <div className="space-y-6">
@@ -154,8 +161,8 @@ export default async function ScreeningDetailPage({
         {/* Poster */}
         <div className="relative mx-auto aspect-[2/3] w-48 shrink-0 overflow-hidden rounded-xl bg-muted shadow-lg sm:mx-0 sm:w-56">
           <Image
-            src={posterUrl(screening.film_poster_path, "w500")}
-            alt={screening.film_title}
+            src={posterUrl(screening.filmPosterPath, "w500")}
+            alt={screening.filmTitle}
             fill
             sizes="(min-width: 640px) 224px, 192px"
             className="object-cover"
@@ -167,23 +174,23 @@ export default async function ScreeningDetailPage({
         <div className="flex flex-1 flex-col justify-between space-y-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-              {screening.film_title}
+              {screening.filmTitle}
             </h1>
 
             {/* Rating */}
-            {screening.film_rating != null && screening.film_rating > 0 && (
+            {screening.filmRating != null && screening.filmRating > 0 && (
               <div className="mt-1.5 flex items-center gap-1.5 text-sm text-muted-foreground">
                 <StarIcon className="size-4 fill-amber-400 text-amber-400" />
                 <span className="font-medium">
-                  {screening.film_rating.toFixed(1)}
+                  {screening.filmRating.toFixed(1)}
                 </span>
               </div>
             )}
 
             {/* Genres */}
-            {screening.film_genres?.length > 0 && (
+            {screening.filmGenres && (screening.filmGenres as string[]).length > 0 && (
               <div className="mt-3 flex flex-wrap gap-1.5">
-                {screening.film_genres.map((genre: string) => (
+                {(screening.filmGenres as string[]).map((genre: string) => (
                   <Badge key={genre} variant="secondary">
                     {genre}
                   </Badge>
@@ -212,9 +219,9 @@ export default async function ScreeningDetailPage({
                     , {cinema.neighborhood}
                   </span>
                 )}
-                {cinema.website_url && (
+                {cinema.websiteUrl && (
                   <a
-                    href={cinema.website_url}
+                    href={cinema.websiteUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="ml-1 text-muted-foreground transition-colors hover:text-foreground"
@@ -225,11 +232,11 @@ export default async function ScreeningDetailPage({
               </div>
             )}
 
-            {screening.after_spot && (
+            {screening.afterSpot && (
               <div className="flex items-center gap-2 text-sm">
                 <GlassWaterIcon className="size-4 shrink-0 text-muted-foreground" />
                 <span className="italic text-muted-foreground">
-                  After: {screening.after_spot}
+                  After: {screening.afterSpot}
                 </span>
               </div>
             )}
@@ -254,7 +261,7 @@ export default async function ScreeningDetailPage({
         </div>
       </div>
 
-      {/* Join button — only for upcoming screenings */}
+      {/* Join button -- only for upcoming screenings */}
       {user && screening.status === "upcoming" && (
         <JoinButton
           screeningId={screening.id}
@@ -266,12 +273,12 @@ export default async function ScreeningDetailPage({
         />
       )}
 
-      {/* Mark as Complete — organizer only, upcoming screenings */}
+      {/* Mark as Complete -- organizer only, upcoming screenings */}
       {user && screening.status === "upcoming" && isOrganizer && (
         <CompleteScreeningButton screeningId={screening.id} />
       )}
 
-      {/* Give Feedback — completed screenings */}
+      {/* Give Feedback -- completed screenings */}
       {user && screening.status === "completed" && (
         <Link href={`/screenings/${screening.id}/feedback`}>
           <Button variant="outline" size="lg" className="w-full">
@@ -284,30 +291,32 @@ export default async function ScreeningDetailPage({
       <Separator />
 
       {/* Organizer */}
-      <section className="space-y-3">
-        <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          Organized by
-        </h2>
-        <Link
-          href={`/profile/${organizer.id}`}
-          className="flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-muted/50"
-        >
-          <Avatar>
-            {organizer.photo_url && (
-              <AvatarImage src={organizer.photo_url} alt={organizer.name} />
-            )}
-            <AvatarFallback>{initials(organizer.name)}</AvatarFallback>
-          </Avatar>
-          <span className="text-sm font-medium">{organizer.name}</span>
-        </Link>
-      </section>
+      {organizer && (
+        <section className="space-y-3">
+          <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Organized by
+          </h2>
+          <Link
+            href={`/profile/${organizer.id}`}
+            className="flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-muted/50"
+          >
+            <Avatar>
+              {organizer.photoUrl && (
+                <AvatarImage src={organizer.photoUrl} alt={organizer.name} />
+              )}
+              <AvatarFallback>{initials(organizer.name)}</AvatarFallback>
+            </Avatar>
+            <span className="text-sm font-medium">{organizer.name}</span>
+          </Link>
+        </section>
+      )}
 
       <Separator />
 
       {/* Attendees */}
       <section className="space-y-3">
         <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          Who's going ({confirmed.length})
+          Who&apos;s going ({confirmed.length})
         </h2>
         {confirmed.length > 0 ? (
           <ul className="space-y-1">
@@ -329,7 +338,7 @@ export default async function ScreeningDetailPage({
                     </AvatarFallback>
                   </Avatar>
                   <span className="text-sm">{a.profile.name}</span>
-                  {a.profile_id === screening.organizer_id && (
+                  {a.profile_id === screening.organizerId && (
                     <Badge variant="outline" className="ml-auto text-xs">
                       Organizer
                     </Badge>

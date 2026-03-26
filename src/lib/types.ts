@@ -4,8 +4,8 @@ export type Cinema = {
   slug: string;
   borough: string;
   neighborhood: string | null;
-  website_url: string | null;
-  logo_url: string | null;
+  websiteUrl: string | null;
+  logoUrl: string | null;
 };
 
 export type Profile = {
@@ -21,21 +21,21 @@ export type Profile = {
 
 export type Screening = {
   id: string;
-  tmdb_id: number;
-  film_title: string;
-  film_poster_path: string | null;
-  film_genres: string[];
-  film_rating: number | null;
-  cinema_id: string | null;
+  tmdbId: number;
+  filmTitle: string;
+  filmPosterPath: string | null;
+  filmGenres: string[];
+  filmRating: number | null;
+  cinemaId: string | null;
   datetime: string | null;
-  after_spot: string | null;
-  organizer_id: string;
+  afterSpot: string | null;
+  organizerId: string;
   cap: number;
-  crew_id: string | null;
+  crewId: string | null;
   status: "draft" | "upcoming" | "completed" | "cancelled";
-  created_at: string;
-  cinema?: Cinema;
-  organizer?: Profile;
+  createdAt: string;
+  cinema?: Cinema | null;
+  organizer?: Profile | null;
   attendee_count?: number;
 };
 

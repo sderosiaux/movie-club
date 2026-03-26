@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { completeOnboarding } from "@/app/(app)/onboarding/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,7 +36,6 @@ type Props = {
 
 export function OnboardingWizard({ profile, cinemas }: Props) {
   const router = useRouter();
-  const supabase = createClient();
 
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -79,32 +78,14 @@ export function OnboardingWizard({ profile, cinemas }: Props) {
   async function handleFinish() {
     setSaving(true);
     try {
-      await supabase
-        .from("profiles")
-        .update({
-          name: name.trim(),
-          photo_url: photoUrl.trim() || null,
-          neighborhood,
-          genres: selectedGenres,
-          letterboxd_username: letterboxd.trim() || null,
-          onboarding_completed: true,
-        })
-        .eq("id", profile.id);
-
-      // Clear existing cinema associations, then insert new ones
-      await supabase
-        .from("profile_cinemas")
-        .delete()
-        .eq("profile_id", profile.id);
-
-      if (selectedCinemas.length > 0) {
-        await supabase.from("profile_cinemas").insert(
-          selectedCinemas.map((cinemaId) => ({
-            profile_id: profile.id,
-            cinema_id: cinemaId,
-          }))
-        );
-      }
+      await completeOnboarding({
+        name: name.trim(),
+        photoUrl: photoUrl.trim() || null,
+        neighborhood,
+        genres: selectedGenres,
+        letterboxdUsername: letterboxd.trim() || null,
+        cinemaIds: selectedCinemas,
+      });
 
       router.push("/screenings");
     } catch {
