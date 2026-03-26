@@ -14,7 +14,12 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Movie Club",
-  description: "Organize movie screenings with your crew",
+  description: "Find your movie crew in NYC",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Movie Club",
+  },
 };
 
 export default function RootLayout({

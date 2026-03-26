@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <rect width="512" height="512" rx="96" fill="#09090b"/>
+  <g fill="#fff">
+    <!-- Film strip left perforations -->
+    <rect x="72" y="120" width="28" height="28" rx="4"/>
+    <rect x="72" y="180" width="28" height="28" rx="4"/>
+    <rect x="72" y="240" width="28" height="28" rx="4"/>
+    <rect x="72" y="300" width="28" height="28" rx="4"/>
+    <rect x="72" y="360" width="28" height="28" rx="4"/>
+    <!-- Film strip right perforations -->
+    <rect x="412" y="120" width="28" height="28" rx="4"/>
+    <rect x="412" y="180" width="28" height="28" rx="4"/>
+    <rect x="412" y="240" width="28" height="28" rx="4"/>
+    <rect x="412" y="300" width="28" height="28" rx="4"/>
+    <rect x="412" y="360" width="28" height="28" rx="4"/>
+    <!-- Film strip borders -->
+    <rect x="56" y="96" width="400" height="8" rx="4"/>
+    <rect x="56" y="408" width="400" height="8" rx="4"/>
+    <rect x="56" y="96" width="8" height="320" rx="4"/>
+    <rect x="448" y="96" width="8" height="320" rx="4"/>
+    <!-- MC text -->
+    <text x="256" y="290" font-family="system-ui, sans-serif" font-size="140" font-weight="700" text-anchor="middle" fill="#fff">MC</text>
+  </g>
+</svg>
