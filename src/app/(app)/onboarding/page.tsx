@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { OnboardingWizard } from "@/components/onboarding/onboarding-wizard";
 import type { Cinema, Profile } from "@/lib/types";
 
+export const dynamic = "force-dynamic";
+
 export default async function OnboardingPage() {
   const supabase = await createClient();
 
@@ -34,11 +36,11 @@ export default async function OnboardingPage() {
     .order("name");
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-4">
+    <div className="flex flex-1 items-center justify-center py-8">
       <OnboardingWizard
         profile={profile as Profile}
         cinemas={(cinemas ?? []) as Cinema[]}
       />
-    </main>
+    </div>
   );
 }
