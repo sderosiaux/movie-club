@@ -15,7 +15,6 @@ import { LogOut, User } from "lucide-react";
 
 export function Header() {
   const router = useRouter();
-  const supabase = createClient();
   const [user, setUser] = useState<{
     id: string;
     name: string;
@@ -24,6 +23,7 @@ export function Header() {
 
   useEffect(() => {
     async function load() {
+      const supabase = createClient();
       const {
         data: { user: authUser },
       } = await supabase.auth.getUser();
@@ -38,9 +38,10 @@ export function Header() {
       if (profile) setUser(profile);
     }
     load();
-  }, [supabase]);
+  }, []);
 
   async function handleSignOut() {
+    const supabase = createClient();
     await supabase.auth.signOut();
     router.push("/");
   }
