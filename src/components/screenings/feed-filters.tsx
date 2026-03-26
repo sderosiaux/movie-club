@@ -10,8 +10,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Cinema } from "@/lib/types";
-
 const DATE_OPTIONS = [
   { value: "all", label: "All" },
   { value: "tonight", label: "Tonight" },

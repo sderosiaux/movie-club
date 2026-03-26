@@ -5,7 +5,6 @@ import { ScreeningCard } from "@/components/screenings/screening-card";
 import { FeedFilters } from "@/components/screenings/feed-filters";
 import { Button } from "@/components/ui/button";
 import { PlusIcon, FilmIcon } from "lucide-react";
-import type { Cinema } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
