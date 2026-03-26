@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({ request });
+  const response = NextResponse.next({ request });
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -34,6 +34,19 @@ export async function middleware(request: NextRequest) {
 
   if (user && request.nextUrl.pathname === "/login") {
     return NextResponse.redirect(new URL("/screenings", request.url));
+  }
+
+  // Redirect to onboarding if not completed
+  if (user && request.nextUrl.pathname !== "/onboarding" && !isPublic) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("onboarding_completed")
+      .eq("id", user.id)
+      .single();
+
+    if (profile && !profile.onboarding_completed) {
+      return NextResponse.redirect(new URL("/onboarding", request.url));
+    }
   }
 
   return response;
