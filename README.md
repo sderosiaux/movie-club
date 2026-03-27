@@ -1,36 +1,71 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Movie Club
 
-## Getting Started
+**Find your movie crew in NYC.**
 
-First, run the development server:
+You know the feeling. You walk out of a great film and you want to *talk* about it. The ending. That one scene. Whether it lived up to the hype. But your friends aren't into movies like you are, or they're busy, or they moved away.
+
+Movie Club fixes that. Small groups of 3-6 people. Real cinemas. A beer after. The movie is almost secondary — it's the conversation that matters.
+
+[**See the landing page**](https://sderosiaux.github.io/movie-club/)
+
+---
+
+## What this is
+
+A web app for NYC cinephiles to:
+
+- **Browse screenings** at Nitehawk, BAM, Alamo Drafthouse, and every indie cinema in the city
+- **Join small groups** — capped at 6 people, no awkward Meetup crowds
+- **Form crews** — after 2-3 screenings, the app notices the same faces and helps you make it a regular thing
+- **Keep it going** — one-tap "same time next week?", film voting, turn rotation so no one burns out organizing
+
+## How it works
+
+1. Sign up with your email
+2. Pick your neighborhood, favorite cinemas, genres
+3. Browse upcoming screenings or propose your own
+4. Show up. Watch. Stay for the conversation.
+5. After a few screenings, you'll find your people
+
+The "Would Go Again" feature lets you quietly signal who you'd hang out with again. When it's mutual, Movie Club suggests forming a crew. No awkward asks. It happens naturally.
+
+## Tech stack
+
+- **Next.js 16** (App Router, Turbopack)
+- **SQLite** via Drizzle ORM + better-sqlite3
+- **Auth.js v5** (email-only credentials for dev)
+- **TMDB API** for film data
+- **Tailwind CSS 4** + shadcn/ui
+- **Letterboxd RSS** import
+
+## Getting started
 
 ```bash
+# Install
+npm install
+
+# Set up the database
+npm run db:push
+npm run db:seed    # seeds 14 NYC cinemas
+
+# Create .env.local
+echo "AUTH_SECRET=$(openssl rand -base64 32)" > .env.local
+echo "TMDB_API_KEY=your-key-here" >> .env.local
+
+# Run
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [localhost:3000](http://localhost:3000). Enter any email to sign in (dev mode — no password needed).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## The origin story
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+This started from a [Reddit post](https://www.reddit.com/r/nycmeetups/) that got 194 upvotes:
 
-## Learn More
+> *"I don't need a huge friend group. I just want a few people who want to grab a beer after a screening and talk about what we just watched."*
 
-To learn more about Next.js, take a look at the following resources:
+100+ people felt the same way. Movie Club is for them.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## License
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+MIT
